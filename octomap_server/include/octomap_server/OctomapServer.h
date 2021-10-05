@@ -263,6 +263,9 @@ protected:
   unsigned m_multires2DScale;
   bool m_projectCompleteMap;
   bool m_useColoredMap;
+
+  // Tsuru add:
+  PCLPointCloud virtual_wall_cloud;
 };
 }
 

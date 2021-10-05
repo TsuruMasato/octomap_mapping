@@ -50,6 +50,8 @@ int main(int argc, char** argv){
   const ros::NodeHandle private_nh("~");
   std::string mapFilename(""), mapFilenameParam("");
 
+  ROS_ERROR("This is source-build octomap!!");
+
   if (argc > 2 || (argc == 2 && std::string(argv[1]) == "-h")){
     ROS_ERROR("%s", USAGE);
     exit(-1);

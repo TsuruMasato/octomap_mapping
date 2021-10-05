@@ -157,6 +157,15 @@ OctomapServer::OctomapServer(const ros::NodeHandle private_nh_, const ros::NodeH
   m_colorFree.b = b;
   m_colorFree.a = a;
 
+  /* Tsuru add */
+  for (int8_t i = -40; i < 40; i++)
+  {
+    for (int8_t j = -40; j < 40; j++)
+    {
+      virtual_wall_cloud.push_back(PCLPoint(i / 15.0, j / 15.0, m_maxRange + 0.1));
+    }   
+  }
+    
   m_nh_private.param("publish_free_space", m_publishFreeSpace, m_publishFreeSpace);
 
   m_nh_private.param("latch", m_latchedTopics, m_latchedTopics);
@@ -290,6 +299,12 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
   pcl::PassThrough<PCLPoint> pass_z;
   pass_z.setFilterFieldName("z");
   pass_z.setFilterLimits(m_pointcloudMinZ, m_pointcloudMaxZ);
+
+  /* add a virtual wall in point cloud, at outside of m_maxRange. */
+  if(m_maxRange > 0.0)
+  {
+    pc += virtual_wall_cloud;
+  }
 
   PCLPointCloud pc_ground; // segmented ground plane
   PCLPointCloud pc_nonground; // everything else
