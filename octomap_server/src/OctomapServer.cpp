@@ -158,9 +158,9 @@ OctomapServer::OctomapServer(const ros::NodeHandle private_nh_, const ros::NodeH
   m_colorFree.a = a;
 
   /* Tsuru add */
-  for (int8_t i = -40; i < 40; i++)
+  for (int8_t i = -50; i < 50; i++)
   {
-    for (int8_t j = -40; j < 40; j++)
+    for (int8_t j = -50; j < 50; j++)
     {
       virtual_wall_cloud.push_back(PCLPoint(i / 15.0, j / 15.0, m_maxRange + 0.1));
     }   
