@@ -158,12 +158,15 @@ OctomapServer::OctomapServer(const ros::NodeHandle private_nh_, const ros::NodeH
   m_colorFree.a = a;
 
   /* Tsuru add */
-  for (int8_t i = -50; i < 50; i++)
+  virtual_wall_cloud_.clear();
+  float view_angle = M_PI * 0.65;
+  for (int8_t i = -75; i < 75; i++)
   {
-    for (int8_t j = -50; j < 50; j++)
+    for (int8_t j = -20; j < 20; j++)
     {
-      virtual_wall_cloud.push_back(PCLPoint(i / 15.0, j / 15.0, m_maxRange + 0.1));
-    }   
+      float theta = i * view_angle / 150.0;
+      virtual_wall_cloud_.push_back(PCLPoint(m_maxRange * sin(theta) * 1.05, j / 10.0, m_maxRange * cos(theta) * 1.05));
+    }
   }
     
   m_nh_private.param("publish_free_space", m_publishFreeSpace, m_publishFreeSpace);
@@ -292,19 +295,19 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
   // set up filter for height range, also removes NANs:
   pcl::PassThrough<PCLPoint> pass_x;
   pass_x.setFilterFieldName("x");
-  pass_x.setFilterLimits(m_pointcloudMinX, m_pointcloudMaxX);
+  pass_x.setFilterLimits(-2.0, 2.0);
   pcl::PassThrough<PCLPoint> pass_y;
   pass_y.setFilterFieldName("y");
-  pass_y.setFilterLimits(m_pointcloudMinY, m_pointcloudMaxY);
+  pass_y.setFilterLimits(-2.0, 2.0);
   pcl::PassThrough<PCLPoint> pass_z;
   pass_z.setFilterFieldName("z");
   pass_z.setFilterLimits(m_pointcloudMinZ, m_pointcloudMaxZ);
 
-  /* add a virtual wall in point cloud, at outside of m_maxRange. */
-  if(m_maxRange > 0.0)
-  {
-    pc += virtual_wall_cloud;
-  }
+  // /* add a virtual wall in point cloud, at outside of m_maxRange. */
+  // if(m_maxRange > 0.0)
+  // {
+  //   pc += virtual_wall_cloud;
+  // }
 
   PCLPointCloud pc_ground; // segmented ground plane
   PCLPointCloud pc_nonground; // everything else
@@ -351,6 +354,18 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
     pass_y.filter(pc);
     pass_z.setInputCloud(pc.makeShared());
     pass_z.filter(pc);
+
+    /* add a virtual wall in point cloud, at outside of m_maxRange. */
+    if (m_maxRange > 0.0)
+    {
+
+      auto cloud_base = pc;
+      cloud_base.clear();
+      cloud_base += virtual_wall_cloud_;
+
+      pcl::transformPointCloud(cloud_base, cloud_base, sensorToWorld);
+      pc += cloud_base;
+    }
 
     pc_nonground = pc;
     // pc_nonground is empty without ground segmentation

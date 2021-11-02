@@ -265,7 +265,7 @@ protected:
   bool m_useColoredMap;
 
   // Tsuru add:
-  PCLPointCloud virtual_wall_cloud;
+  PCLPointCloud virtual_wall_cloud_;
 };
 }
 
