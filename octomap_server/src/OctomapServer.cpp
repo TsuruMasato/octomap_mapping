@@ -71,7 +71,9 @@ OctomapServer::OctomapServer(const ros::NodeHandle private_nh_, const ros::NodeH
   m_incrementalUpdate(false),
   m_initConfig(true),
   use_virtual_wall_(true),
-  dynamic_local_mode_(true)
+  dynamic_local_mode_(true),
+  worst_insertion_time_(0.0),
+  worst_publication_time_(0.0)
 {
   double probHit, probMiss, thresMin, thresMax;
 
@@ -161,13 +163,13 @@ OctomapServer::OctomapServer(const ros::NodeHandle private_nh_, const ros::NodeH
 
   /* Tsuru add */
   virtual_wall_cloud_.clear();
-  float view_angle = M_PI * 0.6;
-  for (int8_t i = -70; i < 70; i++)
+  float view_angle = M_PI * 0.75;
+  for (int8_t i = -50; i < 50; i++)
   {
-    for (int8_t j = -40; j < 10; j++)
+    for (int8_t j = -60; j < 30; j++)
     {
-      float theta = i * view_angle / 140.0;
-      virtual_wall_cloud_.push_back(PCLPoint(m_maxRange * sin(theta) * 1.05, j / 10.0, m_maxRange * cos(theta) * 1.05));
+      float theta = i * view_angle / 100.0;
+      virtual_wall_cloud_.push_back(PCLPoint(m_maxRange * sin(theta) * 1.05, j / 30.0, m_maxRange * cos(theta) * 1.05));
     }
   }
     
@@ -308,10 +310,10 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
   {
     /* move pass_through filter limits according to the current camera pos */
     auto camera_pos = sensorToWorldTf.getOrigin();
-    dynamic_area_x_max_ = camera_pos.x() + 2.5;
-    dynamic_area_x_min_ = camera_pos.x() - 2.5;
-    dynamic_area_y_max_ = camera_pos.y() + 2.5;
-    dynamic_area_y_min_ = camera_pos.y() - 2.5;
+    dynamic_area_x_max_ = camera_pos.x() + 2.0;
+    dynamic_area_x_min_ = camera_pos.x() - 2.0;
+    dynamic_area_y_max_ = camera_pos.y() + 2.0;
+    dynamic_area_y_min_ = camera_pos.y() - 2.0;
     ROS_WARN("camera_x: %1.2f, camera_y: %1.2f", camera_pos.x(), camera_pos.y());
     
     pass_x.setFilterLimits(dynamic_area_x_min_, dynamic_area_x_max_);
@@ -401,7 +403,11 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
   insertScan(sensorToWorldTf.getOrigin(), pc_ground, pc_nonground);
 
   double total_elapsed = (ros::WallTime::now() - startTime).toSec();
-  ROS_DEBUG("Pointcloud insertion in OctomapServer done (%zu+%zu pts (ground/nonground), %f sec)", pc_ground.size(), pc_nonground.size(), total_elapsed);
+  if (total_elapsed > worst_insertion_time_){
+    worst_insertion_time_ = total_elapsed;
+  }
+  ROS_WARN("Pointcloud insertion in OctomapServer done (%zu+%zu pts (ground/nonground), %f sec)", pc_ground.size(), pc_nonground.size(), total_elapsed);
+  ROS_WARN("worst insertion time: %.2f sec)", worst_insertion_time_);
 
   publishAll(cloud->header.stamp);
 }
@@ -580,20 +586,38 @@ void OctomapServer::publishAll(const ros::Time& rostime){
     if (inUpdateBBX)
       handleNodeInBBX(it);
 
-    /* dynamic elimination  */
-    if(dynamic_local_mode_)
-    {
+    double x = it.getX();
+    double y = it.getY();
+    double z = it.getZ();
+    double half_size = it.getSize() / 2.0;
 
+    /* ******************** */
+    /* Dynamic Elimination  */
+    /* ******************** */
+
+    if(dynamic_local_mode_ && true)
+    {
+      /* judge if the node is outside of the dynamic area. */
+      if (x < dynamic_area_x_min_ || x > dynamic_area_x_max_ 
+            || y < dynamic_area_y_min_ || y > dynamic_area_y_max_ )
+      {
+        /* delete the node, and go to the next node. */
+        m_octree->pruneNode(&(*it));
+        // m_octree->deleteNode(it.getKey(), m_maxTreeDepth);        
+
+        // ROS_ERROR("Delete at (%f,%f,%f)", x, y, z);
+        continue;
+      }
     }
 
     if (m_octree->isNodeOccupied(*it)){
-      double z = it.getZ();
-      double half_size = it.getSize() / 2.0;
+      // double z = it.getZ();
+      // double half_size = it.getSize() / 2.0;
       if (z + half_size > m_occupancyMinZ && z - half_size < m_occupancyMaxZ)
       {
         double size = it.getSize();
-        double x = it.getX();
-        double y = it.getY();
+        // double x = it.getX();
+        // double y = it.getY();
 #ifdef COLOR_OCTOMAP_SERVER
         int r = it->getColor().r;
         int g = it->getColor().g;
@@ -603,7 +627,7 @@ void OctomapServer::publishAll(const ros::Time& rostime){
         // Ignore speckles in the map:
         if (m_filterSpeckles && (it.getDepth() >= m_treeDepth ) && isSpeckleNode(it.getKey())){
           m_octree->deleteNode(it.getKey(), m_maxTreeDepth);
-          ROS_ERROR("Ignoring single speckle at (%f,%f,%f)", x, y, z);
+          // ROS_ERROR("Ignoring single speckle at (%f,%f,%f)", x, y, z);
           continue;
         } // else: current octree node is no speckle, send it out
 
@@ -654,8 +678,8 @@ void OctomapServer::publishAll(const ros::Time& rostime){
 
       }
     } else{ // node not occupied => mark as free in 2D map if unknown so far
-      double z = it.getZ();
-      double half_size = it.getSize() / 2.0;
+      // double z = it.getZ();
+      // double half_size = it.getSize() / 2.0;
       if (z + half_size > m_occupancyMinZ && z - half_size < m_occupancyMaxZ)
       {
         handleFreeNode(it);
@@ -663,8 +687,8 @@ void OctomapServer::publishAll(const ros::Time& rostime){
           handleFreeNodeInBBX(it);
 
         if (m_publishFreeSpace){
-          double x = it.getX();
-          double y = it.getY();
+          // double x = it.getX();
+          // double y = it.getY();
 
           //create marker for free space:
           if (publishFreeMarkerArray){
@@ -757,7 +781,13 @@ void OctomapServer::publishAll(const ros::Time& rostime){
 
 
   double total_elapsed = (ros::WallTime::now() - startTime).toSec();
-  ROS_DEBUG("Map publishing in OctomapServer took %f sec", total_elapsed);
+  if(total_elapsed > worst_publication_time_)
+  {
+    worst_publication_time_ = total_elapsed;
+  }
+
+  ROS_WARN("Map publishing in OctomapServer took %f sec", total_elapsed);
+  ROS_WARN("worst publication time: %.2f sec)", worst_publication_time_);
 
 }
 

@@ -269,6 +269,8 @@ protected:
   PCLPointCloud virtual_wall_cloud_;
   bool dynamic_local_mode_;
   float dynamic_area_x_max_, dynamic_area_x_min_, dynamic_area_y_max_, dynamic_area_y_min_;
+  double worst_insertion_time_, worst_publication_time_;
+
 };
 }
 
