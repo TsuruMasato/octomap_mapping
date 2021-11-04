@@ -273,6 +273,10 @@ bool OctomapServer::openFile(const std::string& filename){
 void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& cloud){
   ros::WallTime startTime = ros::WallTime::now();
 
+#ifdef COLOR_OCTOMAP_SERVER
+  ROS_ERROR("STOP!! YOU ARE USING COLOR OCTOMAP");
+  return;
+#endif
 
   //
   // ground filtering in base frame
@@ -292,10 +296,10 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
   pcl_ros::transformAsMatrix(sensorToWorldTf, sensorToWorld);
 
   auto camera_pos = sensorToWorldTf.getOrigin();
-  dynamic_area_x_max_ = camera_pos.x() + 2.0;
-  dynamic_area_x_min_ = camera_pos.x() - 2.0;
-  dynamic_area_y_max_ = camera_pos.y() + 2.0;
-  dynamic_area_y_min_ = camera_pos.y() - 2.0;
+  dynamic_area_x_max_ = camera_pos.x() + 2.5;
+  dynamic_area_x_min_ = camera_pos.x() - 2.5;
+  dynamic_area_y_max_ = camera_pos.y() + 2.5;
+  dynamic_area_y_min_ = camera_pos.y() - 2.5;
   ROS_WARN("camera_x: %1.2f, camera_y: %1.2f", camera_pos.x(), camera_pos.y());
 
   // set up filter for height range, also removes NANs:
@@ -577,8 +581,9 @@ void OctomapServer::publishAll(const ros::Time& rostime){
 #endif
 
         // Ignore speckles in the map:
-        if (m_filterSpeckles && (it.getDepth() == m_treeDepth +1) && isSpeckleNode(it.getKey())){
-          ROS_DEBUG("Ignoring single speckle at (%f,%f,%f)", x, y, z);
+        if (m_filterSpeckles && (it.getDepth() == m_treeDepth ) && isSpeckleNode(it.getKey())){
+          m_octree->deleteNode(it.getKey(), m_maxTreeDepth);
+          ROS_ERROR("Ignoring single speckle at (%f,%f,%f)", x, y, z);
           continue;
         } // else: current octree node is no speckle, send it out
 
@@ -1160,7 +1165,7 @@ bool OctomapServer::isSpeckleNode(const OcTreeKey&nKey) const {
     }
   }
 
-  return neighborFound;
+  return !neighborFound;
 }
 
 void OctomapServer::reconfigureCallback(octomap_server::OctomapServerConfig& config, uint32_t level){
