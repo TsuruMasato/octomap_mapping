@@ -159,12 +159,12 @@ OctomapServer::OctomapServer(const ros::NodeHandle private_nh_, const ros::NodeH
 
   /* Tsuru add */
   virtual_wall_cloud_.clear();
-  float view_angle = M_PI * 0.65;
-  for (int8_t i = -75; i < 75; i++)
+  float view_angle = M_PI * 0.6;
+  for (int8_t i = -70; i < 70; i++)
   {
-    for (int8_t j = -20; j < 20; j++)
+    for (int8_t j = -40; j < 10; j++)
     {
-      float theta = i * view_angle / 150.0;
+      float theta = i * view_angle / 140.0;
       virtual_wall_cloud_.push_back(PCLPoint(m_maxRange * sin(theta) * 1.05, j / 10.0, m_maxRange * cos(theta) * 1.05));
     }
   }
@@ -291,14 +291,20 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
   Eigen::Matrix4f sensorToWorld;
   pcl_ros::transformAsMatrix(sensorToWorldTf, sensorToWorld);
 
+  auto camera_pos = sensorToWorldTf.getOrigin();
+  dynamic_area_x_max_ = camera_pos.x() + 2.0;
+  dynamic_area_x_min_ = camera_pos.x() - 2.0;
+  dynamic_area_y_max_ = camera_pos.y() + 2.0;
+  dynamic_area_y_min_ = camera_pos.y() - 2.0;
+  ROS_WARN("camera_x: %1.2f, camera_y: %1.2f", camera_pos.x(), camera_pos.y());
 
   // set up filter for height range, also removes NANs:
   pcl::PassThrough<PCLPoint> pass_x;
   pass_x.setFilterFieldName("x");
-  pass_x.setFilterLimits(-2.0, 2.0);
+  pass_x.setFilterLimits(dynamic_area_x_min_, dynamic_area_x_max_);
   pcl::PassThrough<PCLPoint> pass_y;
   pass_y.setFilterFieldName("y");
-  pass_y.setFilterLimits(-2.0, 2.0);
+  pass_y.setFilterLimits(dynamic_area_y_min_, dynamic_area_y_max_);
   pcl::PassThrough<PCLPoint> pass_z;
   pass_z.setFilterFieldName("z");
   pass_z.setFilterLimits(m_pointcloudMinZ, m_pointcloudMaxZ);
@@ -359,7 +365,7 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
     if (m_maxRange > 0.0)
     {
 
-      auto cloud_base = pc;
+      auto cloud_base = pc; //bug: unknown bug. we always have to build pointcloud basing on sensor input cloud. (header? something)
       cloud_base.clear();
       cloud_base += virtual_wall_cloud_;
 

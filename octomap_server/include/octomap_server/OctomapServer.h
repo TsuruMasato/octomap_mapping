@@ -266,6 +266,7 @@ protected:
 
   // Tsuru add:
   PCLPointCloud virtual_wall_cloud_;
+  float dynamic_area_x_max_, dynamic_area_x_min_, dynamic_area_y_max_, dynamic_area_y_min_;
 };
 }
 
