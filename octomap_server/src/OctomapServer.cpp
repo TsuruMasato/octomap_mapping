@@ -69,7 +69,9 @@ OctomapServer::OctomapServer(const ros::NodeHandle private_nh_, const ros::NodeH
   m_groundFilterDistance(0.04), m_groundFilterAngle(0.15), m_groundFilterPlaneDistance(0.07),
   m_compressMap(true),
   m_incrementalUpdate(false),
-  m_initConfig(true)
+  m_initConfig(true),
+  use_virtual_wall_(true),
+  dynamic_local_mode_(true)
 {
   double probHit, probMiss, thresMin, thresMax;
 
@@ -295,24 +297,36 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
   Eigen::Matrix4f sensorToWorld;
   pcl_ros::transformAsMatrix(sensorToWorldTf, sensorToWorld);
 
-  auto camera_pos = sensorToWorldTf.getOrigin();
-  dynamic_area_x_max_ = camera_pos.x() + 2.5;
-  dynamic_area_x_min_ = camera_pos.x() - 2.5;
-  dynamic_area_y_max_ = camera_pos.y() + 2.5;
-  dynamic_area_y_min_ = camera_pos.y() - 2.5;
-  ROS_WARN("camera_x: %1.2f, camera_y: %1.2f", camera_pos.x(), camera_pos.y());
-
-  // set up filter for height range, also removes NANs:
   pcl::PassThrough<PCLPoint> pass_x;
   pass_x.setFilterFieldName("x");
-  pass_x.setFilterLimits(dynamic_area_x_min_, dynamic_area_x_max_);
   pcl::PassThrough<PCLPoint> pass_y;
   pass_y.setFilterFieldName("y");
-  pass_y.setFilterLimits(dynamic_area_y_min_, dynamic_area_y_max_);
   pcl::PassThrough<PCLPoint> pass_z;
   pass_z.setFilterFieldName("z");
-  pass_z.setFilterLimits(m_pointcloudMinZ, m_pointcloudMaxZ);
 
+  if (dynamic_local_mode_)
+  {
+    /* move pass_through filter limits according to the current camera pos */
+    auto camera_pos = sensorToWorldTf.getOrigin();
+    dynamic_area_x_max_ = camera_pos.x() + 2.5;
+    dynamic_area_x_min_ = camera_pos.x() - 2.5;
+    dynamic_area_y_max_ = camera_pos.y() + 2.5;
+    dynamic_area_y_min_ = camera_pos.y() - 2.5;
+    ROS_WARN("camera_x: %1.2f, camera_y: %1.2f", camera_pos.x(), camera_pos.y());
+    
+    pass_x.setFilterLimits(dynamic_area_x_min_, dynamic_area_x_max_);
+    pass_y.setFilterLimits(dynamic_area_y_min_, dynamic_area_y_max_);
+    pass_z.setFilterLimits(m_pointcloudMinZ, m_pointcloudMaxZ);
+  }
+  else
+  {
+    // set up filter for height range, also removes NANs:
+    pass_x.setFilterLimits(m_pointcloudMinX, m_pointcloudMaxX);
+    pass_y.setFilterLimits(m_pointcloudMinY, m_pointcloudMaxY);
+    pass_z.setFilterLimits(m_pointcloudMinZ, m_pointcloudMaxZ);
+  }
+  
+  
   // /* add a virtual wall in point cloud, at outside of m_maxRange. */
   // if(m_maxRange > 0.0)
   // {
@@ -366,7 +380,7 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
     pass_z.filter(pc);
 
     /* add a virtual wall in point cloud, at outside of m_maxRange. */
-    if (m_maxRange > 0.0)
+    if (m_maxRange > 0.0 || use_virtual_wall_ )
     {
 
       auto cloud_base = pc; //bug: unknown bug. we always have to build pointcloud basing on sensor input cloud. (header? something)
@@ -566,6 +580,12 @@ void OctomapServer::publishAll(const ros::Time& rostime){
     if (inUpdateBBX)
       handleNodeInBBX(it);
 
+    /* dynamic elimination  */
+    if(dynamic_local_mode_)
+    {
+
+    }
+
     if (m_octree->isNodeOccupied(*it)){
       double z = it.getZ();
       double half_size = it.getSize() / 2.0;
@@ -581,7 +601,7 @@ void OctomapServer::publishAll(const ros::Time& rostime){
 #endif
 
         // Ignore speckles in the map:
-        if (m_filterSpeckles && (it.getDepth() == m_treeDepth ) && isSpeckleNode(it.getKey())){
+        if (m_filterSpeckles && (it.getDepth() >= m_treeDepth ) && isSpeckleNode(it.getKey())){
           m_octree->deleteNode(it.getKey(), m_maxTreeDepth);
           ROS_ERROR("Ignoring single speckle at (%f,%f,%f)", x, y, z);
           continue;
