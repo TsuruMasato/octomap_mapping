@@ -314,7 +314,7 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
     dynamic_area_x_min_ = camera_pos.x() - 2.0;
     dynamic_area_y_max_ = camera_pos.y() + 2.0;
     dynamic_area_y_min_ = camera_pos.y() - 2.0;
-    ROS_WARN("camera_x: %1.2f, camera_y: %1.2f", camera_pos.x(), camera_pos.y());
+    // ROS_WARN("camera_x: %1.2f, camera_y: %1.2f", camera_pos.x(), camera_pos.y());
     
     pass_x.setFilterLimits(dynamic_area_x_min_, dynamic_area_x_max_);
     pass_y.setFilterLimits(dynamic_area_y_min_, dynamic_area_y_max_);
@@ -595,7 +595,7 @@ void OctomapServer::publishAll(const ros::Time& rostime){
     /* Dynamic Elimination  */
     /* ******************** */
 
-    if(dynamic_local_mode_ && true)
+    if(dynamic_local_mode_ && false)
     {
       /* judge if the node is outside of the dynamic area. */
       if (x < dynamic_area_x_min_ || x > dynamic_area_x_max_ 
@@ -788,7 +788,7 @@ void OctomapServer::publishAll(const ros::Time& rostime){
 
   ROS_WARN("Map publishing in OctomapServer took %f sec", total_elapsed);
   ROS_WARN("worst publication time: %.2f sec)", worst_publication_time_);
-
+  // ROS_WARN("OcTree size: %d", m_octree->size());
 }
 
 
