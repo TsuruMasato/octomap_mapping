@@ -602,8 +602,8 @@ void OctomapServer::publishAll(const ros::Time& rostime){
             || y < dynamic_area_y_min_ || y > dynamic_area_y_max_ )
       {
         /* delete the node, and go to the next node. */
-        m_octree->pruneNode(&(*it));
-        // m_octree->deleteNode(it.getKey(), m_maxTreeDepth);        
+        // m_octree->pruneNode(&(*it));
+        m_octree->deleteNode(it.getKey(), it.getDepth());  // very slow because of its recursive process...
 
         // ROS_ERROR("Delete at (%f,%f,%f)", x, y, z);
         continue;
