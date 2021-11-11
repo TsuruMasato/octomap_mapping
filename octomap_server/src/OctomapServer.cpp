@@ -285,8 +285,17 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
   //
   // ground filtering in base frame
   //
-  PCLPointCloud pc; // input cloud for filtering and ground-detection
-  pcl::fromROSMsg(*cloud, pc);
+  PCLPointCloud::Ptr pc(new PCLPointCloud()); // input cloud for filtering and ground-detection
+  pcl::fromROSMsg(*cloud, *pc);
+
+  /* subtract points for accerelation */  //not so meaningful...
+  ROS_WARN("original_size: %d", pc->size());
+  if (!subtract_point_cloud(pc))
+  {
+    ROS_ERROR("Failed to subtract points in the octomap_server callback function");
+    return;
+  }
+  ROS_WARN("reduced_size: %d", pc->size());
 
   tf::StampedTransform sensorToWorldTf;
   try {
@@ -357,46 +366,46 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
     pcl_ros::transformAsMatrix(baseToWorldTf, baseToWorld);
 
     // transform pointcloud from sensor frame to fixed robot frame
-    pcl::transformPointCloud(pc, pc, sensorToBase);
-    pass_x.setInputCloud(pc.makeShared());
-    pass_x.filter(pc);
-    pass_y.setInputCloud(pc.makeShared());
-    pass_y.filter(pc);
-    pass_z.setInputCloud(pc.makeShared());
-    pass_z.filter(pc);
-    filterGroundPlane(pc, pc_ground, pc_nonground);
+    pcl::transformPointCloud(*pc, *pc, sensorToBase);
+    pass_x.setInputCloud(pc);
+    pass_x.filter(*pc);
+    pass_y.setInputCloud(pc);
+    pass_y.filter(*pc);
+    pass_z.setInputCloud(pc);
+    pass_z.filter(*pc);
+    filterGroundPlane(*pc, pc_ground, pc_nonground);
 
     // transform clouds to world frame for insertion
     pcl::transformPointCloud(pc_ground, pc_ground, baseToWorld);
     pcl::transformPointCloud(pc_nonground, pc_nonground, baseToWorld);
   } else {
     // directly transform to map frame:
-    pcl::transformPointCloud(pc, pc, sensorToWorld);
+    pcl::transformPointCloud(*pc, *pc, sensorToWorld);
 
     // just filter height range:
-    pass_x.setInputCloud(pc.makeShared());
-    pass_x.filter(pc);
-    pass_y.setInputCloud(pc.makeShared());
-    pass_y.filter(pc);
-    pass_z.setInputCloud(pc.makeShared());
-    pass_z.filter(pc);
+    pass_x.setInputCloud(pc);
+    pass_x.filter(*pc);
+    pass_y.setInputCloud(pc);
+    pass_y.filter(*pc);
+    pass_z.setInputCloud(pc);
+    pass_z.filter(*pc);
 
     /* add a virtual wall in point cloud, at outside of m_maxRange. */
     if (m_maxRange > 0.0 || use_virtual_wall_ )
     {
 
-      auto cloud_base = pc; //bug: unknown bug. we always have to build pointcloud basing on sensor input cloud. (header? something)
+      auto cloud_base = *pc; //bug: unknown bug. we always have to build pointcloud basing on sensor input cloud. (header? something)
       cloud_base.clear();
       cloud_base += virtual_wall_cloud_;
 
       pcl::transformPointCloud(cloud_base, cloud_base, sensorToWorld);
-      pc += cloud_base;
+      *pc += cloud_base;
     }
 
-    pc_nonground = pc;
+    pc_nonground = *pc;
     // pc_nonground is empty without ground segmentation
-    pc_ground.header = pc.header;
-    pc_nonground.header = pc.header;
+    pc_ground.header = pc->header;
+    pc_nonground.header = pc->header;
   }
 
 
@@ -595,7 +604,7 @@ void OctomapServer::publishAll(const ros::Time& rostime){
     /* Dynamic Elimination  */
     /* ******************** */
 
-    if(dynamic_local_mode_ && false)
+    if(dynamic_local_mode_ && true)
     {
       /* judge if the node is outside of the dynamic area. */
       if (x < dynamic_area_x_min_ || x > dynamic_area_x_max_ 
@@ -884,6 +893,21 @@ bool OctomapServer::resetSrv(std_srvs::Empty::Request& req, std_srvs::Empty::Res
   m_fmarkerPub.publish(freeNodesVis);
 
   return true;
+}
+
+bool OctomapServer::subtract_point_cloud(PCLPointCloud::Ptr point_cloud)
+{
+  ros::WallTime startTime = ros::WallTime::now();
+  pcl::RandomSample<PCLPoint> random_sampler;
+  // pcl::FilterIndices<PCLPoint> extracted_indices;
+  random_sampler.setInputCloud(point_cloud);
+  random_sampler.setSeed(std::rand());
+  random_sampler.setSample(point_cloud->size() / 10);
+  random_sampler.filter(*point_cloud);
+  double total_elapsed = (ros::WallTime::now() - startTime).toSec();
+  ROS_WARN("random_sample used %f sec)", total_elapsed);
+  // ROS_WARN("worst insertion time: %.2f sec)", worst_insertion_time_);
+  return true; //success, true;
 }
 
 void OctomapServer::publishBinaryOctoMap(const ros::Time& rostime) const{

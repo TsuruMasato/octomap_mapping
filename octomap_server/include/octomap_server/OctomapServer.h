@@ -46,6 +46,7 @@
 #include <pcl/conversions.h>
 #include <pcl_ros/transforms.h>
 #include <pcl/sample_consensus/method_types.h>
+#include <pcl/filters/random_sample.h>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"  // pcl::SAC_SAMPLE_SIZE is protected since PCL 1.8.0
@@ -271,6 +272,7 @@ protected:
   float dynamic_area_x_max_, dynamic_area_x_min_, dynamic_area_y_max_, dynamic_area_y_min_;
   double worst_insertion_time_, worst_publication_time_;
 
+  bool subtract_point_cloud(PCLPointCloud::Ptr point_cloud);
 };
 }
 
