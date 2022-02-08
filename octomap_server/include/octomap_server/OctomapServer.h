@@ -79,10 +79,6 @@
 #include <octomap/ColorOcTree.h>
 #endif
 
-#ifdef EXTEND_OCTOMAP_SERVER
-// #include "octomap_server/ExOcTree.h"
-#endif
-
 using namespace octomap;
 
 namespace octomap_server {
@@ -170,7 +166,7 @@ public:
   /// (Covariant return type requires an up-to-date compiler)
   ExOcTree *create() const { return new ExOcTree(resolution); }
 
-  std::string getTreeType() const { return "ExOcTree"; }
+  std::string getTreeType() const { return "ColorOcTree"; }
 
   /**
    * Prunes a node when it is collapsible. This overloaded
@@ -273,8 +269,8 @@ public:
   typedef pcl::PointCloud<pcl::PointXYZRGB> PCLPointCloud;
   typedef octomap::ColorOcTree OcTreeT;
 #elif defined(EXTEND_OCTOMAP_SERVER)
-  typedef pcl::PointXYZRGB PCLPoint;
-  typedef pcl::PointCloud<pcl::PointXYZRGB> PCLPointCloud;
+  typedef pcl::PointXYZ PCLPoint;
+  typedef pcl::PointCloud<pcl::PointXYZ> PCLPointCloud;
   typedef ExOcTree OcTreeT;
 #else
   typedef pcl::PointXYZ PCLPoint;
