@@ -111,6 +111,23 @@ public:
     uint8_t r, g, b;
   };
 
+  enum ShapePrimitive
+  {
+    WALL,
+    FLOOR,
+    CEILING,
+    HANDRAIL,
+    OTHER
+  };
+
+  enum ContactType
+  {
+    SURFACE,
+    GRASP,
+    LANDING,
+    NOT_AVAILABLE
+  };
+
 public:
   ExOcTreeNode() : OcTreeNode() {}
 
@@ -146,12 +163,37 @@ public:
 
   ExOcTreeNode::Color getAverageChildColor() const;
 
+  /* shape primitive*/
+  inline ShapePrimitive getPrimitive() const { return shape_primitive; }
+  inline void setPrimitive(ShapePrimitive p) { shape_primitive = p; }
+
+  inline Eigen::Vector3d getNormalVector() const { return normal_vector; }
+
+  inline void setMyNormalVector(Eigen::Vector3d n_vector_input)
+  {
+    normal_vector = n_vector_input;
+  }
+
+  inline void setMyNormalVector(double input_x, double input_y, double input_z)
+  {
+    normal_vector << input_x, input_y, input_z;
+    // normal_vector.x() = x;
+    // normal_vector.y() = y;
+    // normal_vector.z() = z;
+    // getNormalVector();
+  }
+
   // file I/O
   std::istream &readData(std::istream &s);
   std::ostream &writeData(std::ostream &s) const;
 
 protected:
   Color color;
+  ShapePrimitive shape_primitive;
+  Eigen::Vector3d normal_vector;
+  bool affordance_ready = false;
+  Eigen::Vector3d approach_direction;
+  ContactType contact_type = ContactType::NOT_AVAILABLE;
 };
 
 // tree definition
@@ -219,6 +261,12 @@ public:
       return NULL;
     return integrateNodeColor(key, r, g, b);
   }
+
+  ExOcTreeNode *setNodePrimitive(const OcTreeKey &key,
+                                      ExOcTreeNode::ShapePrimitive p);
+
+  ExOcTreeNode *setNodeNormalVector(const OcTreeKey &key,
+                                         const Eigen::Vector3d n_vec);
 
   // update inner nodes, sets color to average child color
   void updateInnerOccupancy();

@@ -44,6 +44,8 @@ namespace octomap_server{
   {
     s.write((const char *)&value, sizeof(value)); // occupancy
     s.write((const char *)&color, sizeof(Color)); // color
+    // s.write((const char *)&shape_primitive, sizeof(ShapePrimitive)); // shape primitive
+    // s.write((const char *)&normal_vector, sizeof(Eigen::Vector3d)); // normal vector
 
     return s;
   }
@@ -52,6 +54,8 @@ namespace octomap_server{
   {
     s.read((char *)&value, sizeof(value)); // occupancy
     s.read((char *)&color, sizeof(Color)); // color
+    // s.read((char *)&shape_primitive, sizeof(ShapePrimitive)); // shape primitive
+    // s.read((char *)&normal_vector, sizeof(Eigen::Vector3d)); // normal vector
 
     return s;
   }
@@ -115,6 +119,46 @@ namespace octomap_server{
       n->setColor(r, g, b);
     }
     return n;
+  }
+
+  ExOcTreeNode *ExOcTree::setNodePrimitive(const OcTreeKey &key,
+                                                     ExOcTreeNode::ShapePrimitive p)
+  {
+    // std::cerr << "setNodePrimitive start" << std::endl;
+    ExOcTreeNode *n = search(key);
+    if (n != nullptr)
+    {
+      // std::cerr << "setNodePrimitive if(true) " << std::endl;
+      n->setPrimitive(p);
+      return n;
+    }
+    else
+    {
+      // std::cerr << "setNodePrimitive if (false)" << std::endl;
+      ROS_ERROR("null ptr");
+      return nullptr;
+    }
+    // std::cerr << "setNodePrimitive end" << std::endl;
+  }
+
+  ExOcTreeNode *ExOcTree::setNodeNormalVector(const OcTreeKey &key,
+                                                        const Eigen::Vector3d n_vec)
+  {
+    // std::cerr << "setNodeNormalVector start" << std::endl;
+    ExOcTreeNode *n = search(key);
+    if (n != nullptr)
+    {
+      // std::cerr << "setNodeNormalVecor if(true) " << std::endl;
+      n->setMyNormalVector(n_vec);
+      return n;
+    }
+    else
+    {
+      std::cerr << "setNodeNormalVector if (false)" << std::endl;
+      ROS_ERROR("null ptr");
+      return nullptr;
+    }
+    // std::cerr << "setNodeNormalVector end" << std::endl;
   }
 
   bool ExOcTree::pruneNode(ExOcTreeNode *node)
