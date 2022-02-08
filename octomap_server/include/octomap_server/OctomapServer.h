@@ -80,10 +80,191 @@
 #endif
 
 #ifdef EXTEND_OCTOMAP_SERVER
-#include "octomap_server/ExOcTree.h"
+// #include "octomap_server/ExOcTree.h"
 #endif
 
+using namespace octomap;
+
 namespace octomap_server {
+
+/* definitions for ExOctomap */
+
+// forward declaraton for "friend"
+class ExOcTree;
+
+// node definition
+class ExOcTreeNode : public OcTreeNode
+{
+public:
+  friend class ExOcTree; // needs access to node children (inherited)
+
+  class Color
+  {
+  public:
+    Color() : r(255), g(255), b(255) {}
+    Color(uint8_t _r, uint8_t _g, uint8_t _b)
+        : r(_r), g(_g), b(_b) {}
+    inline bool operator==(const Color &other) const
+    {
+      return (r == other.r && g == other.g && b == other.b);
+    }
+    inline bool operator!=(const Color &other) const
+    {
+      return (r != other.r || g != other.g || b != other.b);
+    }
+    uint8_t r, g, b;
+  };
+
+public:
+  ExOcTreeNode() : OcTreeNode() {}
+
+  ExOcTreeNode(const ExOcTreeNode &rhs) : OcTreeNode(rhs), color(rhs.color) {}
+
+  bool operator==(const ExOcTreeNode &rhs) const
+  {
+    return (rhs.value == value && rhs.color == color);
+  }
+
+  void copyData(const ExOcTreeNode &from)
+  {
+    OcTreeNode::copyData(from);
+    this->color = from.getColor();
+  }
+
+  inline Color getColor() const { return color; }
+  inline void setColor(Color c) { this->color = c; }
+  inline void setColor(uint8_t r, uint8_t g, uint8_t b)
+  {
+    this->color = Color(r, g, b);
+  }
+
+  Color &getColor() { return color; }
+
+  // has any color been integrated? (pure white is very unlikely...)
+  inline bool isColorSet() const
+  {
+    return ((color.r != 255) || (color.g != 255) || (color.b != 255));
+  }
+
+  void updateColorChildren();
+
+  ExOcTreeNode::Color getAverageChildColor() const;
+
+  // file I/O
+  std::istream &readData(std::istream &s);
+  std::ostream &writeData(std::ostream &s) const;
+
+protected:
+  Color color;
+};
+
+// tree definition
+class ExOcTree : public OccupancyOcTreeBase<ExOcTreeNode>
+{
+
+public:
+  /// Default constructor, sets resolution of leafs
+  ExOcTree(double resolution);
+
+  /// virtual constructor: creates a new object of same type
+  /// (Covariant return type requires an up-to-date compiler)
+  ExOcTree *create() const { return new ExOcTree(resolution); }
+
+  std::string getTreeType() const { return "ExOcTree"; }
+
+  /**
+   * Prunes a node when it is collapsible. This overloaded
+   * version only considers the node occupancy for pruning,
+   * different colors of child nodes are ignored.
+   * @return true if pruning was successful
+   */
+  virtual bool pruneNode(ExOcTreeNode *node);
+
+  virtual bool isNodeCollapsible(const ExOcTreeNode *node) const;
+
+  // set node color at given key or coordinate. Replaces previous color.
+  ExOcTreeNode *setNodeColor(const OcTreeKey &key, uint8_t r,
+                             uint8_t g, uint8_t b);
+
+  ExOcTreeNode *setNodeColor(float x, float y,
+                             float z, uint8_t r,
+                             uint8_t g, uint8_t b)
+  {
+    OcTreeKey key;
+    if (!this->coordToKeyChecked(point3d(x, y, z), key))
+      return NULL;
+    return setNodeColor(key, r, g, b);
+  }
+
+  // integrate color measurement at given key or coordinate. Average with previous color
+  ExOcTreeNode *averageNodeColor(const OcTreeKey &key, uint8_t r,
+                                 uint8_t g, uint8_t b);
+
+  ExOcTreeNode *averageNodeColor(float x, float y,
+                                 float z, uint8_t r,
+                                 uint8_t g, uint8_t b)
+  {
+    OcTreeKey key;
+    if (!this->coordToKeyChecked(point3d(x, y, z), key))
+      return NULL;
+    return averageNodeColor(key, r, g, b);
+  }
+
+  // integrate color measurement at given key or coordinate. Average with previous color
+  ExOcTreeNode *integrateNodeColor(const OcTreeKey &key, uint8_t r,
+                                   uint8_t g, uint8_t b);
+
+  ExOcTreeNode *integrateNodeColor(float x, float y,
+                                   float z, uint8_t r,
+                                   uint8_t g, uint8_t b)
+  {
+    OcTreeKey key;
+    if (!this->coordToKeyChecked(point3d(x, y, z), key))
+      return NULL;
+    return integrateNodeColor(key, r, g, b);
+  }
+
+  // update inner nodes, sets color to average child color
+  void updateInnerOccupancy();
+
+  // uses gnuplot to plot a RGB histogram in EPS format
+  void writeColorHistogram(std::string filename);
+
+protected:
+  void updateInnerOccupancyRecurs(ExOcTreeNode *node, unsigned int depth);
+
+  /**
+   * Static member object which ensures that this OcTree's prototype
+   * ends up in the classIDMapping only once. You need this as a 
+   * static member in any derived octree class in order to read .ot
+   * files through the AbstractOcTree factory. You should also call
+   * ensureLinking() once from the constructor.
+   */
+  class StaticMemberInitializer
+  {
+  public:
+    StaticMemberInitializer()
+    {
+      ExOcTree *tree = new ExOcTree(0.1);
+      tree->clearKeyRays();
+      AbstractOcTree::registerTreeType(tree);
+    }
+
+    /**
+       * Dummy function to ensure that MSVC does not drop the
+       * StaticMemberInitializer, causing this tree failing to register.
+       * Needs to be called from the constructor of this octree.
+       */
+    void ensureLinking(){};
+  };
+  /// static member to ensure static initialization (only once)
+  static StaticMemberInitializer ExOcTreeMemberInit;
+};
+
+//! user friendly output in format (r g b)
+std::ostream &operator<<(std::ostream &out, ExOcTreeNode::Color const &c);
+
+
 class OctomapServer {
 
 public:
@@ -94,7 +275,7 @@ public:
 #elif defined(EXTEND_OCTOMAP_SERVER)
   typedef pcl::PointXYZRGB PCLPoint;
   typedef pcl::PointCloud<pcl::PointXYZRGB> PCLPointCloud;
-  typedef octomap::ExOcTree OcTreeT;
+  typedef ExOcTree OcTreeT;
 #else
   typedef pcl::PointXYZ PCLPoint;
   typedef pcl::PointCloud<pcl::PointXYZ> PCLPointCloud;
@@ -282,7 +463,7 @@ protected:
   double worst_insertion_time_, worst_publication_time_;
 
   bool subtract_point_cloud(PCLPointCloud::Ptr point_cloud);
-};
+  };
 }
 
 #endif
