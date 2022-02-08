@@ -83,11 +83,11 @@ using namespace octomap;
 
 namespace octomap_server {
 
-/* definitions for ExOctomap */
+
+/* definitions for ExOctomap class */
 
 // forward declaraton for "friend"
 class ExOcTree;
-
 // node definition
 class ExOcTreeNode : public OcTreeNode
 {
@@ -177,10 +177,28 @@ public:
   inline void setMyNormalVector(double input_x, double input_y, double input_z)
   {
     normal_vector << input_x, input_y, input_z;
-    // normal_vector.x() = x;
-    // normal_vector.y() = y;
-    // normal_vector.z() = z;
-    // getNormalVector();
+  }
+
+  inline bool isAffordanceReady() const { return affordance_ready; }
+
+  inline bool setAffordanceReady(bool input)
+  {
+    affordance_ready = input;
+    return affordance_ready;
+  }
+
+  Eigen::Vector3d getApproachDirection() { return approach_direction; }
+
+  void setApproachDirection(Eigen::Vector3d input_vec)
+  {
+    approach_direction = input_vec;
+  }
+
+  ContactType getContactType() const { return contact_type; }
+
+  void setContactType(ContactType input_contact_type)
+  {
+    contact_type = input_contact_type;
   }
 
   // file I/O
@@ -308,6 +326,9 @@ protected:
 //! user friendly output in format (r g b)
 std::ostream &operator<<(std::ostream &out, ExOcTreeNode::Color const &c);
 
+
+
+/* main process implementation */
 
 class OctomapServer {
 
