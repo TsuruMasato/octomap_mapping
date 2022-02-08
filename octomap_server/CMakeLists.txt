@@ -45,11 +45,6 @@ add_library(${PROJECT_NAME} src/OctomapServer.cpp src/OctomapServerMultilayer.cp
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBS})
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_gencfg)
 
-add_library(${PROJECT_NAME}_color src/OctomapServer.cpp src/OctomapServerMultilayer.cpp src/TrackingOctomapServer.cpp)
-target_link_libraries(${PROJECT_NAME}_color ${LINK_LIBS})
-add_dependencies(${PROJECT_NAME}_color ${PROJECT_NAME}_gencfg)
-target_compile_definitions(${PROJECT_NAME}_color PUBLIC COLOR_OCTOMAP_SERVER)
-
 add_library(${PROJECT_NAME}_extend src/OctomapServer.cpp src/OctomapServerMultilayer.cpp src/TrackingOctomapServer.cpp)
 target_link_libraries(${PROJECT_NAME}_extend ${LINK_LIBS})
 add_dependencies(${PROJECT_NAME}_extend ${PROJECT_NAME}_gencfg)
@@ -58,8 +53,8 @@ add_dependencies(${PROJECT_NAME}_extend ${PROJECT_NAME}_gencfg)
 add_executable(octomap_server_node src/octomap_server_node.cpp)
 target_link_libraries(octomap_server_node ${PROJECT_NAME} ${LINK_LIBS})
 
-add_executable(octomap_color_server_node src/octomap_server_node.cpp)
-target_link_libraries(octomap_color_server_node ${PROJECT_NAME}_color ${LINK_LIBS})
+# add_executable(octomap_color_server_node src/octomap_server_node.cpp)
+# target_link_libraries(octomap_color_server_node ${PROJECT_NAME}_color ${LINK_LIBS})
 
 add_executable(ex_octomap_server_node src/octomap_server_node.cpp)
 target_link_libraries(ex_octomap_server_node ${PROJECT_NAME}_extend ${LINK_LIBS})
@@ -80,19 +75,20 @@ target_link_libraries(octomap_tracking_server_node ${PROJECT_NAME} ${LINK_LIBS})
 add_library(octomap_server_nodelet src/octomap_server_nodelet.cpp)
 target_link_libraries(octomap_server_nodelet ${PROJECT_NAME} ${LINK_LIBS})
 
-add_library(octomap_color_server_nodelet src/octomap_server_nodelet.cpp)
-target_link_libraries(octomap_color_server_nodelet ${PROJECT_NAME}_color ${LINK_LIBS})
+# add_library(octomap_color_server_nodelet src/octomap_server_nodelet.cpp)
+# target_link_libraries(octomap_color_server_nodelet ${PROJECT_NAME}_color ${LINK_LIBS})
 
 # install targets:
-install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_color
+install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_extend
   octomap_server_node
-  octomap_color_server_node
+  # octomap_color_server_node
+  ex_octomap_server_node
   octomap_server_static
   octomap_server_multilayer
   octomap_saver
   octomap_tracking_server_node
   octomap_server_nodelet
-  octomap_color_server_nodelet
+  # octomap_color_server_nodelet
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -108,6 +104,6 @@ install(DIRECTORY launch/
 
 install(FILES 
   nodelet_plugins.xml
-  color_nodelet_plugins.xml
+  # color_nodelet_plugins.xml
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )

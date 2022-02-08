@@ -169,14 +169,19 @@ public:
 
   inline Eigen::Vector3d getNormalVector() const { return normal_vector; }
 
-  inline void setMyNormalVector(Eigen::Vector3d n_vector_input)
+  inline void setNormalVector(Eigen::Vector3d n_vector_input)
   {
     normal_vector = n_vector_input;
   }
 
-  inline void setMyNormalVector(double input_x, double input_y, double input_z)
+  inline void setNormalVector(double input_x, double input_y, double input_z)
   {
     normal_vector << input_x, input_y, input_z;
+  }
+
+  inline bool isNormalVectorSet() const
+  {
+    return ((normal_vector.x() != 0) || (normal_vector.y() != 0) || (normal_vector.z() != 0));
   }
 
   inline bool isAffordanceReady() const { return affordance_ready; }
@@ -208,7 +213,7 @@ public:
 protected:
   Color color;
   ShapePrimitive shape_primitive;
-  Eigen::Vector3d normal_vector;
+  Eigen::Vector3d normal_vector{0.0, 0.0, 0.0};
   bool affordance_ready = false;
   Eigen::Vector3d approach_direction;
   ContactType contact_type = ContactType::NOT_AVAILABLE;
@@ -280,6 +285,16 @@ public:
     return integrateNodeColor(key, r, g, b);
   }
 
+  ExOcTreeNode *averageNodeNormalVector(const OcTreeKey &key, float n_vec_x, float n_vec_y, float n_vec_z);
+
+  ExOcTreeNode *averageNodeNormalVector(float x, float y, float z, float n_vec_x, float n_vec_y, float n_vec_z)
+  {
+    OcTreeKey key;
+    if (!this->coordToKeyChecked(point3d(x, y, z), key))
+      return NULL;
+    return averageNodeNormalVector(key, n_vec_x, n_vec_y, n_vec_z);
+  }
+
   ExOcTreeNode *setNodePrimitive(const OcTreeKey &key,
                                       ExOcTreeNode::ShapePrimitive p);
 
@@ -328,7 +343,7 @@ std::ostream &operator<<(std::ostream &out, ExOcTreeNode::Color const &c);
 
 
 
-/* main process implementation */
+/* main process implementation as the server system */
 
 class OctomapServer {
 
@@ -336,10 +351,10 @@ public:
 #ifdef COLOR_OCTOMAP_SERVER
   typedef pcl::PointXYZRGB PCLPoint;
   typedef pcl::PointCloud<pcl::PointXYZRGB> PCLPointCloud;
-  typedef octomap::ColorOcTree OcTreeT;
+  // typedef octomap::ColorOcTree OcTreeT;
 #elif defined(EXTEND_OCTOMAP_SERVER)
-  typedef pcl::PointXYZ PCLPoint;
-  typedef pcl::PointCloud<pcl::PointXYZ> PCLPointCloud;
+  typedef pcl::PointXYZRGBNormal PCLPoint;
+  typedef pcl::PointCloud<pcl::PointXYZRGBNormal> PCLPointCloud;
   typedef ExOcTree OcTreeT;
 #else
   typedef pcl::PointXYZ PCLPoint;

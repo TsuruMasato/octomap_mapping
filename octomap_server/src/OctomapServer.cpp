@@ -149,7 +149,7 @@ namespace octomap_server{
     if (n != nullptr)
     {
       // std::cerr << "setNodeNormalVecor if(true) " << std::endl;
-      n->setMyNormalVector(n_vec);
+      n->setNormalVector(n_vec);
       return n;
     }
     else
@@ -245,6 +245,27 @@ namespace octomap_server{
       else
       {
         n->setColor(r, g, b);
+      }
+    }
+    return n;
+  }
+
+  ExOcTreeNode *ExOcTree::averageNodeNormalVector(const OcTreeKey &key,
+                                                  float n_vec_x,
+                                                  float n_vec_y,
+                                                  float n_vec_z)
+  {
+    ExOcTreeNode *n = search(key);
+    if (n != 0)
+    {
+      if (n->isNormalVectorSet())
+      {
+        Eigen::Vector3d prev_n_vec = n->getNormalVector();
+        n->setNormalVector((prev_n_vec.x() + n_vec_x) / 2, (prev_n_vec.y() + n_vec_y) / 2, (prev_n_vec.z() + n_vec_z) / 2);
+      }
+      else
+      {
+        n->setNormalVector(n_vec_x, n_vec_y, n_vec_z);
       }
     }
     return n;
@@ -472,7 +493,11 @@ OctomapServer::OctomapServer(const ros::NodeHandle private_nh_, const ros::NodeH
     for (int8_t j = -60; j < 30; j++)
     {
       float theta = i * view_angle / 100.0;
-      virtual_wall_cloud_.push_back(PCLPoint(m_maxRange * sin(theta) * 1.05, j / 30.0, m_maxRange * cos(theta) * 1.05));
+      PCLPoint tmp_point;
+      tmp_point.x = m_maxRange * sin(theta) * 1.05;
+      tmp_point.y = j / 30.0;
+      tmp_point.z = m_maxRange * cos(theta) * 1.05;
+      virtual_wall_cloud_.push_back(tmp_point);
     }
   }
     
@@ -583,6 +608,10 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
 #ifdef COLOR_OCTOMAP_SERVER
   ROS_ERROR("STOP!! YOU ARE USING COLOR OCTOMAP");
   return;
+#endif
+
+#ifdef EXTEND_OCTOMAP_SERVER
+  ROS_INFO("ExOctomap mode, made by M.Tsuru.");
 #endif
 
   //
@@ -762,7 +791,7 @@ void OctomapServer::insertScan(const tf::Point& sensorOriginTf, const PCLPointCl
   }
 
   // all other points: free on ray, occupied on endpoint:
-  for (PCLPointCloud::const_iterator it = nonground.begin(); it != nonground.end(); ++it){
+  for (auto it = nonground.begin(); it != nonground.end(); ++it){
     point3d point(it->x, it->y, it->z);
     // maxrange check
     if ((m_maxRange < 0.0) || ((point - sensorOrigin).norm() <= m_maxRange) ) {
@@ -782,6 +811,11 @@ void OctomapServer::insertScan(const tf::Point& sensorOriginTf, const PCLPointCl
 #ifdef COLOR_OCTOMAP_SERVER // NB: Only read and interpret color if it's an occupied node
         m_octree->averageNodeColor(it->x, it->y, it->z, /*r=*/it->r, /*g=*/it->g, /*b=*/it->b);
 #endif
+
+// #ifdef EXTEND_OCTOMAP_SERVER
+        m_octree->averageNodeColor(it->x, it->y, it->z, /*r=*/it->r, /*g=*/it->g, /*b=*/it->b);
+        m_octree->averageNodeNormalVector(/*pos*/ it->x, it->y, it->z, /*inputN*/ it->normal_x, it->normal_y, it->normal_z);
+// #endif
       }
     } else {// ray longer than maxrange:;
       point3d new_end = sensorOrigin + (point - sensorOrigin).normalized() * m_maxRange;
@@ -983,6 +1017,12 @@ void OctomapServer::publishAll(const ros::Time& rostime){
           _point.x = x; _point.y = y; _point.z = z;
           _point.r = r; _point.g = g; _point.b = b;
           pclCloud.push_back(_point);
+#elif defined(EXTEND_OCTOMAP_SERVER)
+          PCLPoint tmp;
+          tmp.x = x;
+          tmp.y = y;
+          tmp.z = z;
+          pclCloud.push_back(tmp);
 #else
           pclCloud.push_back(PCLPoint(x, y, z));
 #endif
