@@ -28,6 +28,7 @@
  */
 
 #include <octomap_server/OctomapServer.h>
+#include <pcl/features/normal_3d.h>
 
 using namespace octomap;
 using octomap_msgs::Octomap;
@@ -722,6 +723,25 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
     pass_z.setInputCloud(pc);
     pass_z.filter(*pc);
 
+    /* add  Normal Vector information */
+
+    pcl::NormalEstimation<PCLPoint, PCLPoint> ne;
+    ne.setInputCloud(pc);
+
+    // Create an empty kdtree representation, and pass it to the normal estimation object.
+    // Its content will be filled inside the object, based on the given input dataset (as no other search surface is given).
+    pcl::search::KdTree<PCLPoint>::Ptr tree(new pcl::search::KdTree<PCLPoint>());
+    ne.setSearchMethod(tree);
+
+    // Output datasets
+    pcl::PointCloud<PCLPoint>::Ptr cloud_normals(new pcl::PointCloud<PCLPoint>);
+
+    // Use all neighbors in a sphere of radius 3cm
+    ne.setRadiusSearch(0.03);
+
+    // Compute the features
+    ne.compute(*pc);
+
     /* add a virtual wall in point cloud, at outside of m_maxRange. */
     if (m_maxRange > 0.0 || use_virtual_wall_ )
     {
@@ -812,8 +832,9 @@ void OctomapServer::insertScan(const tf::Point& sensorOriginTf, const PCLPointCl
         m_octree->averageNodeColor(it->x, it->y, it->z, /*r=*/it->r, /*g=*/it->g, /*b=*/it->b);
 #endif
 
-// #ifdef EXTEND_OCTOMAP_SERVER
-        m_octree->averageNodeColor(it->x, it->y, it->z, /*r=*/it->r, /*g=*/it->g, /*b=*/it->b);
+        // #ifdef EXTEND_OCTOMAP_SERVER
+        // m_octree->averageNodeColor(it->x, it->y, it->z, /*r=*/it->r, /*g=*/it->g, /*b=*/it->b);
+        m_octree->averageNodeColor(it->x, it->y, it->z, /*r=*/abs(it->normal_x) * 100, abs(it->normal_y) * 100, abs(it->normal_z) * 100 );
         m_octree->averageNodeNormalVector(/*pos*/ it->x, it->y, it->z, /*inputN*/ it->normal_x, it->normal_y, it->normal_z);
 // #endif
       }
