@@ -681,6 +681,8 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
   PCLPointCloud pc_nonground; // everything else
 
   if (m_filterGroundPlane){
+    ROS_WARN("[filterGroundPlane mode] Removing ground point cloud before integrating with Octomap.");
+    ROS_WARN("[filterGroundPlane mode] This may cause unexpected segmentation conflicts in Octomap.");
     tf::StampedTransform sensorToBaseTf, baseToWorldTf;
     try{
       m_tfListener.waitForTransform(m_baseFrameId, cloud->header.frame_id, cloud->header.stamp, ros::Duration(0.2));
@@ -833,8 +835,15 @@ void OctomapServer::insertScan(const tf::Point& sensorOriginTf, const PCLPointCl
 #endif
 
         // #ifdef EXTEND_OCTOMAP_SERVER
-        // m_octree->averageNodeColor(it->x, it->y, it->z, /*r=*/it->r, /*g=*/it->g, /*b=*/it->b);
-        m_octree->averageNodeColor(it->x, it->y, it->z, /*r=*/abs(it->normal_x) * 100, abs(it->normal_y) * 100, abs(it->normal_z) * 100 );
+        if (it->r == 0 && it->g == 0 && it->b == 0)
+        {
+          ROS_ERROR("[Tsuru] PointCloud is competely black. Camera input cloud might not contain color information.");
+          m_octree->averageNodeColor(it->x, it->y, it->z, /*r=*/abs(it->normal_x) * 100, abs(it->normal_y) * 100, abs(it->normal_z) * 100);
+        }
+        else
+        {
+          m_octree->averageNodeColor(it->x, it->y, it->z, /*r=*/it->r, /*g=*/it->g, /*b=*/it->b);
+        }
         m_octree->averageNodeNormalVector(/*pos*/ it->x, it->y, it->z, /*inputN*/ it->normal_x, it->normal_y, it->normal_z);
 // #endif
       }
