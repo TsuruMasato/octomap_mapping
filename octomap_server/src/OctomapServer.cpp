@@ -136,7 +136,7 @@ namespace octomap_server{
     else
     {
       // std::cerr << "setNodePrimitive if (false)" << std::endl;
-      ROS_ERROR("null ptr");
+      ROS_ERROR("[setNodePrimitive]null ptr");
       return nullptr;
     }
     // std::cerr << "setNodePrimitive end" << std::endl;
@@ -222,6 +222,10 @@ namespace octomap_server{
       {
         n->setColor(r, g, b);
       }
+    }
+    else
+    {
+      ROS_ERROR("[averageNodeColor] null ptr. Key was not found in tree.");
     }
     return n;
   }
@@ -816,7 +820,7 @@ void OctomapServer::insertScan(const tf::Point& sensorOriginTf, const PCLPointCl
   for (auto it = nonground.begin(); it != nonground.end(); ++it){
     point3d point(it->x, it->y, it->z);
     // maxrange check
-    if ((m_maxRange < 0.0) || ((point - sensorOrigin).norm() <= m_maxRange) ) {
+    if ((m_maxRange < 0.0) || ((point - sensorOrigin).norm() <= m_maxRange) ) { // when the Raycast hit to some obstacles:
 
       // free cells
       if (m_octree->computeRayKeys(sensorOrigin, point, m_keyRay)){
@@ -835,16 +839,30 @@ void OctomapServer::insertScan(const tf::Point& sensorOriginTf, const PCLPointCl
 #endif
 
         // #ifdef EXTEND_OCTOMAP_SERVER
-        if (it->r == 0 && it->g == 0 && it->b == 0)
+        
+        if (it->r == 0 && it->g == 0 && it->b == 0) // RGB is 0, so use normal vector as color info.
         {
           ROS_ERROR("[Tsuru] PointCloud is competely black. Camera input cloud might not contain color information.");
-          m_octree->averageNodeColor(it->x, it->y, it->z, /*r=*/abs(it->normal_x) * 100, abs(it->normal_y) * 100, abs(it->normal_z) * 100);
+          if(!m_octree->averageNodeColor(key, /*r=*/abs(it->normal_x) * 100, abs(it->normal_y) * 100, abs(it->normal_z) * 100))
+          {
+            ROS_ERROR("No nodes at key. Let me assign a new node now.");
+            m_octree->updateNode(key, true);
+            m_octree->averageNodeColor(key, /*r=*/abs(it->normal_x) * 100, abs(it->normal_y) * 100, abs(it->normal_z) * 100);
+            // continue;
+          }
         }
         else
         {
-          m_octree->averageNodeColor(it->x, it->y, it->z, /*r=*/it->r, /*g=*/it->g, /*b=*/it->b);
+          if(!m_octree->averageNodeColor(key, /*r=*/it->r, /*g=*/it->g, /*b=*/it->b))
+          {
+            ROS_ERROR("No nodes at key. Let me assign a new node now.");
+            m_octree->updateNode(key, true);
+            m_octree->averageNodeColor(key, /*r=*/it->r, /*g=*/it->g, /*b=*/it->b);
+            // continue;
+          }
         }
-        m_octree->averageNodeNormalVector(/*pos*/ it->x, it->y, it->z, /*inputN*/ it->normal_x, it->normal_y, it->normal_z);
+        m_octree->averageNodeNormalVector(/*pos*/ key, /*inputN*/ it->normal_x, it->normal_y, it->normal_z);
+        m_octree->setNodePrimitive(key, ExOcTreeNode::ShapePrimitive::FLOOR);
 // #endif
       }
     } else {// ray longer than maxrange:;
