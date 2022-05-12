@@ -117,7 +117,8 @@ public:
     FLOOR,
     CEILING,
     HANDRAIL,
-    OTHER
+    OTHER,
+    FREE
   };
 
   enum ContactType
@@ -410,9 +411,10 @@ protected:
   * @param nonground all other endpoints (clear up to occupied endpoint)
   */
   virtual void insertScan(const tf::Point& sensorOrigin, const PCLPointCloud& ground, const PCLPointCloud& nonground);
+  virtual void insertScanWithPrimitives(const tf::Point &sensorOriginTf, const std::vector<PCLPointCloud> &pc_array, const std::vector<ExOcTreeNode::ShapePrimitive> &primitive_array);
 
   /// label the input cloud "pc" into ground and nonground. Should be in the robot's fixed frame (not world!)
-  void filterGroundPlane(const PCLPointCloud& pc, PCLPointCloud& ground, PCLPointCloud& nonground) const;
+  void filterGroundPlane(const PCLPointCloud &pc, PCLPointCloud &ground, PCLPointCloud &nonground) const;
 
   /**
   * @brief Find speckle nodes (single occupied voxels with no neighbors). Only works on lowest resolution!

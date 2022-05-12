@@ -394,7 +394,7 @@ OctomapServer::OctomapServer(const ros::NodeHandle private_nh_, const ros::NodeH
   m_occupancyMinZ(-std::numeric_limits<double>::max()),
   m_occupancyMaxZ(std::numeric_limits<double>::max()),
   m_minSizeX(0.0), m_minSizeY(0.0),
-  m_filterSpeckles(false), m_filterGroundPlane(false),
+  m_filterSpeckles(true), m_filterGroundPlane(false),
   m_groundFilterDistance(0.04), m_groundFilterAngle(0.15), m_groundFilterPlaneDistance(0.07),
   m_compressMap(true),
   m_incrementalUpdate(false),
@@ -623,6 +623,11 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
   // ground filtering in base frame
   //
   PCLPointCloud::Ptr pc(new PCLPointCloud()); // input cloud for filtering and ground-detection
+  std::vector<PCLPointCloud> pc_array; // clustered (devided) clouds
+  std::vector<ExOcTreeNode::ShapePrimitive> primitive_array;
+  pc_array.clear();
+  primitive_array.clear();
+
   pcl::fromROSMsg(*cloud, *pc);
 
   /* subtract points for accerelation */  //not so meaningful...
@@ -721,7 +726,7 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
     // directly transform to map frame:
     pcl::transformPointCloud(*pc, *pc, sensorToWorld);
 
-    // just filter height range:
+    // [Dynamic Area Limitter] by Tsuru
     pass_x.setInputCloud(pc);
     pass_x.filter(*pc);
     pass_y.setInputCloud(pc);
@@ -748,26 +753,46 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
     // Compute the features
     ne.compute(*pc);
 
+
+    /* ********** */
+    /* Clustering */
+    //  separate PointCloud into several groups, and deside each ShapePrimitive.
+    /* ********** */
+
+    /* 1. RANSAC segmentation for ground. Only once. */
+    filterGroundPlane(*pc, pc_ground, pc_nonground);
+    ROS_ERROR("pc_ground.size() : %d", pc_ground.size());
+    ROS_ERROR("pc_nonground.size() : %d", pc_nonground.size());
+    pc_array.push_back(pc_ground);
+    primitive_array.push_back(ExOcTreeNode::ShapePrimitive::FLOOR);
+
+    /* とりあえず余剰分を。 */
+    pc_array.push_back(pc_nonground);
+    primitive_array.push_back(ExOcTreeNode::ShapePrimitive::OTHER);
+
+    /* ************************************************************ */
     /* add a virtual wall in point cloud, at outside of m_maxRange. */
+    /* ************************************************************ */
+
     if (m_maxRange > 0.0 || use_virtual_wall_ )
     {
 
-      auto cloud_base = *pc; //bug: unknown bug. we always have to build pointcloud basing on sensor input cloud. (header? something)
-      cloud_base.clear();
-      cloud_base += virtual_wall_cloud_;
+      auto virtual_wall_base = *pc; //bug: unknown bug. we always have to build pointcloud basing on sensor input cloud. (header? something)
+      virtual_wall_base.clear();
+      virtual_wall_base += virtual_wall_cloud_;
 
-      pcl::transformPointCloud(cloud_base, cloud_base, sensorToWorld);
-      *pc += cloud_base;
+      pcl::transformPointCloud(virtual_wall_base, virtual_wall_base, sensorToWorld);
+      pc_nonground += virtual_wall_base;
     }
 
-    pc_nonground = *pc;
-    // pc_nonground is empty without ground segmentation
+    // pc_nonground = *pc; // pc_nonground is empty without ground segmentation -> now always use ground segmentation
     pc_ground.header = pc->header;
     pc_nonground.header = pc->header;
   }
 
 
-  insertScan(sensorToWorldTf.getOrigin(), pc_ground, pc_nonground);
+  // insertScan(sensorToWorldTf.getOrigin(), pc_ground, pc_nonground);
+  insertScanWithPrimitives(sensorToWorldTf.getOrigin(), pc_array, primitive_array);
 
   double total_elapsed = (ros::WallTime::now() - startTime).toSec();
   if (total_elapsed > worst_insertion_time_){
@@ -932,7 +957,166 @@ void OctomapServer::insertScan(const tf::Point& sensorOriginTf, const PCLPointCl
 #endif
 }
 
+void OctomapServer::insertScanWithPrimitives(const tf::Point &sensorOriginTf, const std::vector<PCLPointCloud> &pc_array, const std::vector<ExOcTreeNode::ShapePrimitive> &primitive_array)
+{
+  point3d sensorOrigin = pointTfToOctomap(sensorOriginTf);
 
+  if (!m_octree->coordToKeyChecked(sensorOrigin, m_updateBBXMin) || !m_octree->coordToKeyChecked(sensorOrigin, m_updateBBXMax))
+  {
+    ROS_ERROR_STREAM("Could not generate Key for origin " << sensorOrigin);
+  }
+
+  if (pc_array.size() != primitive_array.size())
+  {
+    ROS_ERROR("The size of PointCloud array and ShapePrimitives are not same.");
+    ROS_ERROR("pc_array.size() : %d, primitive_array.size() : %d", pc_array.size(), primitive_array.size());
+    ROS_ERROR("You forgot to add primitive information to some PointCloud clusters.");
+    ROS_ERROR("Please add [OTHER] primitive when you cannot find any primitive shape at a cluster.");
+    return;
+  }
+
+#ifdef COLOR_OCTOMAP_SERVER
+  unsigned char *colors = new unsigned char[3];
+#endif
+
+  // instead of direct scan insertion, compute update to filter ground:
+  KeySet free_cells, occupied_cells;
+
+  for(size_t i = 0; i < pc_array.size(); i++)
+  {
+    ROS_WARN("Cluster size : %d", pc_array.at(i).size());
+    ROS_WARN("Primitive Type : %d", primitive_array.at(i));
+
+    // Judge free or occupied by RayCasting :
+    for (auto it = pc_array.at(i).begin(); it != pc_array.at(i).end(); ++it)
+    {
+      point3d point(it->x, it->y, it->z);
+      // maxrange check
+      if ((m_maxRange < 0.0) || ((point - sensorOrigin).norm() <= m_maxRange))
+      { // when the Raycast hit to some obstacles:
+
+        // free cells
+        if (m_octree->computeRayKeys(sensorOrigin, point, m_keyRay))
+        {
+          free_cells.insert(m_keyRay.begin(), m_keyRay.end());
+        }
+        // occupied endpoint
+        OcTreeKey key;
+        if (m_octree->coordToKeyChecked(point, key))
+        {
+          occupied_cells.insert(key);
+
+          updateMinKey(key, m_updateBBXMin);
+          updateMaxKey(key, m_updateBBXMax);
+
+#ifdef COLOR_OCTOMAP_SERVER // NB: Only read and interpret color if it's an occupied node
+        m_octree->averageNodeColor(it->x, it->y, it->z, /*r=*/it->r, /*g=*/it->g, /*b=*/it->b);
+#endif
+
+        // #ifdef EXTEND_OCTOMAP_SERVER
+
+        if (it->r == 0 && it->g == 0 && it->b == 0) // RGB is 0, so use normal vector as color info.
+        {
+          ROS_ERROR("[Tsuru] PointCloud is competely black. Camera input cloud might not contain color information.");
+          if (!m_octree->averageNodeColor(key, /*r=*/abs(it->normal_x) * 100, abs(it->normal_y) * 100, abs(it->normal_z) * 100))
+          {
+            // ROS_ERROR("No nodes at key. Let me assign a new node now.");
+            m_octree->updateNode(key, true);
+            m_octree->averageNodeColor(key, /*r=*/abs(it->normal_x) * 100, abs(it->normal_y) * 100, abs(it->normal_z) * 100);
+            // continue;
+          }
+        }
+        else
+        {
+          if (!m_octree->averageNodeColor(key, /*r=*/it->r, /*g=*/it->g, /*b=*/it->b))
+          {
+            // ROS_ERROR("No nodes at key. Let me assign a new node now.");
+            m_octree->updateNode(key, true);
+            m_octree->averageNodeColor(key, /*r=*/it->r, /*g=*/it->g, /*b=*/it->b);
+            // continue;
+          }
+        }
+        m_octree->averageNodeNormalVector(/*pos*/ key, /*inputN*/ it->normal_x, it->normal_y, it->normal_z);
+        // m_octree->setNodePrimitive(key, ExOcTreeNode::ShapePrimitive::FLOOR);
+        m_octree->setNodePrimitive(key, primitive_array.at(i));
+        // #endif
+      }
+    }
+    else
+    { // ray longer than maxrange:;
+      point3d new_end = sensorOrigin + (point - sensorOrigin).normalized() * m_maxRange;
+      if (m_octree->computeRayKeys(sensorOrigin, new_end, m_keyRay))
+      {
+        free_cells.insert(m_keyRay.begin(), m_keyRay.end());
+
+        octomap::OcTreeKey endKey;
+        if (m_octree->coordToKeyChecked(new_end, endKey))
+        {
+          free_cells.insert(endKey);
+          updateMinKey(endKey, m_updateBBXMin);
+          updateMaxKey(endKey, m_updateBBXMax);
+        }
+        else
+        {
+          ROS_ERROR_STREAM("Could not generate Key for endpoint " << new_end);
+        }
+      }
+    }
+  }
+
+  }
+
+  // mark free cells only if not seen occupied in this cloud
+  for (KeySet::iterator it = free_cells.begin(), end = free_cells.end(); it != end; ++it)
+  {
+    if (occupied_cells.find(*it) == occupied_cells.end())
+    {
+      m_octree->updateNode(*it, false);
+      m_octree->setNodePrimitive(*it, ExOcTreeNode::ShapePrimitive::FREE);
+    }
+  }
+
+  // now mark all occupied cells:
+  for (KeySet::iterator it = occupied_cells.begin(), end = occupied_cells.end(); it != end; it++)
+  {
+    m_octree->updateNode(*it, true);
+  }
+
+  // TODO: eval lazy+updateInner vs. proper insertion
+  // non-lazy by default (updateInnerOccupancy() too slow for large maps)
+  // m_octree->updateInnerOccupancy();
+  octomap::point3d minPt, maxPt;
+  ROS_DEBUG_STREAM("Bounding box keys (before): " << m_updateBBXMin[0] << " " << m_updateBBXMin[1] << " " << m_updateBBXMin[2] << " / " << m_updateBBXMax[0] << " " << m_updateBBXMax[1] << " " << m_updateBBXMax[2]);
+
+  // TODO: snap max / min keys to larger voxels by m_maxTreeDepth
+  //   if (m_maxTreeDepth < 16)
+  //   {
+  //      OcTreeKey tmpMin = getIndexKey(m_updateBBXMin, m_maxTreeDepth); // this should give us the first key at depth m_maxTreeDepth that is smaller or equal to m_updateBBXMin (i.e. lower left in 2D grid coordinates)
+  //      OcTreeKey tmpMax = getIndexKey(m_updateBBXMax, m_maxTreeDepth); // see above, now add something to find upper right
+  //      tmpMax[0]+= m_octree->getNodeSize( m_maxTreeDepth ) - 1;
+  //      tmpMax[1]+= m_octree->getNodeSize( m_maxTreeDepth ) - 1;
+  //      tmpMax[2]+= m_octree->getNodeSize( m_maxTreeDepth ) - 1;
+  //      m_updateBBXMin = tmpMin;
+  //      m_updateBBXMax = tmpMax;
+  //   }
+
+  // TODO: we could also limit the bbx to be within the map bounds here (see publishing check)
+  minPt = m_octree->keyToCoord(m_updateBBXMin);
+  maxPt = m_octree->keyToCoord(m_updateBBXMax);
+  ROS_DEBUG_STREAM("Updated area bounding box: " << minPt << " - " << maxPt);
+  ROS_DEBUG_STREAM("Bounding box keys (after): " << m_updateBBXMin[0] << " " << m_updateBBXMin[1] << " " << m_updateBBXMin[2] << " / " << m_updateBBXMax[0] << " " << m_updateBBXMax[1] << " " << m_updateBBXMax[2]);
+
+  if (m_compressMap)
+    m_octree->prune();
+
+#ifdef COLOR_OCTOMAP_SERVER
+  if (colors)
+  {
+    delete[] colors;
+    colors = NULL;
+  }
+#endif
+}
 
 void OctomapServer::publishAll(const ros::Time& rostime){
   ros::WallTime startTime = ros::WallTime::now();
@@ -989,7 +1173,7 @@ void OctomapServer::publishAll(const ros::Time& rostime){
     /* Dynamic Elimination  */
     /* ******************** */
 
-    if(dynamic_local_mode_ && true)
+    if(dynamic_local_mode_ && false)
     {
       /* judge if the node is outside of the dynamic area. */
       if (x < dynamic_area_x_min_ || x > dynamic_area_x_max_ 
@@ -1356,7 +1540,7 @@ void OctomapServer::filterGroundPlane(const PCLPointCloud& pc, PCLPointCloud& gr
     pcl::ExtractIndices<PCLPoint> extract;
     bool groundPlaneFound = false;
 
-    while(cloud_filtered.size() > 10 && !groundPlaneFound){
+    while(cloud_filtered.size() > 500 && !groundPlaneFound){
       seg.setInputCloud(cloud_filtered.makeShared());
       seg.segment (*inliers, *coefficients);
       if (inliers->indices.size () == 0){
@@ -1368,15 +1552,15 @@ void OctomapServer::filterGroundPlane(const PCLPointCloud& pc, PCLPointCloud& gr
       extract.setInputCloud(cloud_filtered.makeShared());
       extract.setIndices(inliers);
 
-      if (std::abs(coefficients->values.at(3)) < m_groundFilterPlaneDistance){
-        ROS_DEBUG("Ground plane found: %zu/%zu inliers. Coeff: %f %f %f %f", inliers->indices.size(), cloud_filtered.size(),
-                  coefficients->values.at(0), coefficients->values.at(1), coefficients->values.at(2), coefficients->values.at(3));
+      if (-coefficients->values.at(3) < -0.8){  // check d of the plane [m]
+        ROS_WARN("Ground plane found: %zu/%zu inliers. Coeff: %f %f %f %f, m_groundFilterPlaneDistance: %f", inliers->indices.size(), cloud_filtered.size(),
+                  coefficients->values.at(0), coefficients->values.at(1), coefficients->values.at(2), coefficients->values.at(3), m_groundFilterPlaneDistance);
         extract.setNegative (false);
         extract.filter (ground);
 
         // remove ground points from full pointcloud:
         // workaround for PCL bug:
-        if(inliers->indices.size() != cloud_filtered.size()){
+        if(inliers->indices.size() != cloud_filtered.size() || true){
           extract.setNegative(true);
           PCLPointCloud cloud_out;
           extract.filter(cloud_out);
@@ -1386,8 +1570,8 @@ void OctomapServer::filterGroundPlane(const PCLPointCloud& pc, PCLPointCloud& gr
 
         groundPlaneFound = true;
       } else{
-        ROS_DEBUG("Horizontal plane (not ground) found: %zu/%zu inliers. Coeff: %f %f %f %f", inliers->indices.size(), cloud_filtered.size(),
-                  coefficients->values.at(0), coefficients->values.at(1), coefficients->values.at(2), coefficients->values.at(3));
+        ROS_WARN("Horizontal plane (not ground) found: %zu/%zu inliers. Coeff: %f %f %f %f, m_groundFilterPlaneDistance: %f", inliers->indices.size(), cloud_filtered.size(),
+                 coefficients->values.at(0), coefficients->values.at(1), coefficients->values.at(2), coefficients->values.at(3), m_groundFilterPlaneDistance);
         pcl::PointCloud<PCLPoint> cloud_out;
         extract.setNegative (false);
         extract.filter(cloud_out);
@@ -1414,6 +1598,8 @@ void OctomapServer::filterGroundPlane(const PCLPointCloud& pc, PCLPointCloud& gr
       ROS_WARN("No ground plane found in scan");
 
       // do a rough fitlering on height to prevent spurious obstacles
+      /* [Tsuru] 結構ヤバイ処理。点群の上下一定範囲を強制的に床平面と見做して分割してる */
+      /*
       pcl::PassThrough<PCLPoint> second_pass;
       second_pass.setFilterFieldName("z");
       second_pass.setFilterLimits(-m_groundFilterPlaneDistance, m_groundFilterPlaneDistance);
@@ -1422,6 +1608,8 @@ void OctomapServer::filterGroundPlane(const PCLPointCloud& pc, PCLPointCloud& gr
 
       second_pass.setFilterLimitsNegative (true);
       second_pass.filter(nonground);
+      */
+      nonground = pc; // [Tsuru] regard all points as obstacles.
     }
 
     // debug:
