@@ -29,6 +29,7 @@
 
 #include <octomap_server/OctomapServer.h>
 #include <pcl/features/normal_3d.h>
+#include <octomap_server/OctomapSegmentation.h>
 
 using namespace octomap;
 using octomap_msgs::Octomap;
@@ -800,6 +801,9 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
   }
   ROS_WARN("Pointcloud insertion in OctomapServer done (%zu+%zu pts (ground/nonground), %f sec)", pc_ground.size(), pc_nonground.size(), total_elapsed);
   ROS_WARN("worst insertion time: %.2f sec)", worst_insertion_time_);
+
+  OctomapSegmentation seg;
+  seg.segmentation(m_octree);
 
   publishAll(cloud->header.stamp);
 }
