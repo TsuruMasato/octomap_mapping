@@ -760,15 +760,15 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
     /* ********** */
 
     /* 1. RANSAC segmentation for ground. Only once. */
-    filterGroundPlane(*pc, pc_ground, pc_nonground);
-    ROS_ERROR("pc_ground.size() : %d", pc_ground.size());
-    ROS_ERROR("pc_nonground.size() : %d", pc_nonground.size());
-    pc_array.push_back(pc_ground);
-    primitive_array.push_back(ExOcTreeNode::ShapePrimitive::FLOOR);
+    // filterGroundPlane(*pc, pc_ground, pc_nonground);
+    // ROS_ERROR("pc_ground.size() : %d", pc_ground.size());
+    // ROS_ERROR("pc_nonground.size() : %d", pc_nonground.size());
+    // pc_array.push_back(pc_ground);
+    // primitive_array.push_back(ExOcTreeNode::ShapePrimitive::FLOOR);
 
     /* とりあえず余剰分を。 */
-    pc_array.push_back(pc_nonground);
-    primitive_array.push_back(ExOcTreeNode::ShapePrimitive::OTHER);
+    // pc_array.push_back(pc_nonground);
+    // primitive_array.push_back(ExOcTreeNode::ShapePrimitive::OTHER);
 
     /* ************************************************************ */
     /* add a virtual wall in point cloud, at outside of m_maxRange. */
@@ -785,14 +785,14 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
       pc_nonground += virtual_wall_base;
     }
 
-    // pc_nonground = *pc; // pc_nonground is empty without ground segmentation -> now always use ground segmentation
+    pc_nonground = *pc; // pc_nonground is empty without ground segmentation -> now always use ground segmentation
     pc_ground.header = pc->header;
     pc_nonground.header = pc->header;
   }
 
 
-  // insertScan(sensorToWorldTf.getOrigin(), pc_ground, pc_nonground);
-  insertScanWithPrimitives(sensorToWorldTf.getOrigin(), pc_array, primitive_array);
+  insertScan(sensorToWorldTf.getOrigin(), pc_ground, pc_nonground);
+  // insertScanWithPrimitives(sensorToWorldTf.getOrigin(), pc_array, primitive_array);
 
   double total_elapsed = (ros::WallTime::now() - startTime).toSec();
   if (total_elapsed > worst_insertion_time_){
