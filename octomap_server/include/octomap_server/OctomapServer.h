@@ -375,6 +375,15 @@ public:
   virtual void insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& cloud);
   virtual bool openFile(const std::string& filename);
 
+  /// Test if key is within update area of map (2D, ignores height)
+  inline bool isInUpdateBBX(const OcTreeT::iterator &it) const
+  {
+    // 2^(tree_depth-depth) voxels wide:
+    unsigned voxelWidth = (1 << (m_maxTreeDepth - it.getDepth()));
+    octomap::OcTreeKey key = it.getIndexKey(); // lower corner of voxel
+    return (key[0] + voxelWidth >= m_updateBBXMin[0] && key[1] + voxelWidth >= m_updateBBXMin[1] && key[0] <= m_updateBBXMax[0] && key[1] <= m_updateBBXMax[1]);
+  }
+
 protected:
   inline static void updateMinKey(const octomap::OcTreeKey& in, octomap::OcTreeKey& min) {
     for (unsigned i = 0; i < 3; ++i)
@@ -386,16 +395,6 @@ protected:
       max[i] = std::max(in[i], max[i]);
   };
 
-  /// Test if key is within update area of map (2D, ignores height)
-  inline bool isInUpdateBBX(const OcTreeT::iterator& it) const {
-    // 2^(tree_depth-depth) voxels wide:
-    unsigned voxelWidth = (1 << (m_maxTreeDepth - it.getDepth()));
-    octomap::OcTreeKey key = it.getIndexKey(); // lower corner of voxel
-    return (key[0] + voxelWidth >= m_updateBBXMin[0]
-            && key[1] + voxelWidth >= m_updateBBXMin[1]
-            && key[0] <= m_updateBBXMax[0]
-            && key[1] <= m_updateBBXMax[1]);
-  }
 
   void reconfigureCallback(octomap_server::OctomapServerConfig& config, uint32_t level);
   void publishBinaryOctoMap(const ros::Time& rostime = ros::Time::now()) const;
@@ -543,6 +542,8 @@ protected:
   bool dynamic_local_mode_;
   float dynamic_area_x_max_, dynamic_area_x_min_, dynamic_area_y_max_, dynamic_area_y_min_;
   double worst_insertion_time_, worst_publication_time_;
+
+  pcl::PointCloud<pcl::PointXYZRGB> segmented_pc_;
 
   bool subtract_point_cloud(PCLPointCloud::Ptr point_cloud);
   };

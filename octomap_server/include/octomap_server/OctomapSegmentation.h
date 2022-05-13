@@ -42,19 +42,22 @@
 #include <octomap_server/OctomapServer.h>
 
 using namespace octomap;
+using namespace octomap_server;
 
 class OctomapSegmentation
 {
   public:
-    OctomapSegmentation(){};
+    OctomapSegmentation();
     ~OctomapSegmentation(){};
 
     /* main function */
-    void segmentation(octomap_server::OctomapServer::OcTreeT *&target_octomap);
+    pcl::PointCloud<pcl::PointXYZRGB> segmentation(octomap_server::OctomapServer::OcTreeT *&target_octomap);
 
     /* floor_removal() */
-
+    bool isSpeckleNode(const OcTreeKey &nKey, octomap_server::OctomapServer::OcTreeT *&target_octomap);
 
   private:
     bool tsuru_ = true;
+    ros::NodeHandle nh_;
+    ros::Publisher pub_segmented_pc_;
 };

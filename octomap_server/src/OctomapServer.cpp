@@ -802,8 +802,11 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
   ROS_WARN("Pointcloud insertion in OctomapServer done (%zu+%zu pts (ground/nonground), %f sec)", pc_ground.size(), pc_nonground.size(), total_elapsed);
   ROS_WARN("worst insertion time: %.2f sec)", worst_insertion_time_);
 
+  /* Segment the OctoMap according to its color and normal vector */
+
   OctomapSegmentation seg;
-  seg.segmentation(m_octree);
+  segmented_pc_.clear();
+  segmented_pc_ = seg.segmentation(m_octree);
 
   publishAll(cloud->header.stamp);
 }
@@ -891,7 +894,7 @@ void OctomapServer::insertScan(const tf::Point& sensorOriginTf, const PCLPointCl
           }
         }
         m_octree->averageNodeNormalVector(/*pos*/ key, /*inputN*/ it->normal_x, it->normal_y, it->normal_z);
-        m_octree->setNodePrimitive(key, ExOcTreeNode::ShapePrimitive::FLOOR);
+        m_octree->setNodePrimitive(key, ExOcTreeNode::ShapePrimitive::OTHER);
 // #endif
       }
     } else {// ray longer than maxrange:;
@@ -1207,6 +1210,7 @@ void OctomapServer::publishAll(const ros::Time& rostime){
 #endif
 
         // Ignore speckles in the map:
+        m_filterSpeckles = true; // [Tsuru] 一旦こっちは切る。同様の処理はsegmentationの内部にあり。
         if (m_filterSpeckles && (it.getDepth() >= m_treeDepth ) && isSpeckleNode(it.getKey())){
           m_octree->deleteNode(it.getKey(), m_maxTreeDepth);
           // ROS_ERROR("Ignoring single speckle at (%f,%f,%f)", x, y, z);
@@ -1360,6 +1364,13 @@ void OctomapServer::publishAll(const ros::Time& rostime){
     cloud.header.stamp = rostime;
     m_pointCloudPub.publish(cloud);
   }
+
+  /* publish pointcloud */
+  sensor_msgs::PointCloud2 segmented_cloud_msg;
+  pcl::toROSMsg(segmented_pc_, segmented_cloud_msg);
+  segmented_cloud_msg.header.frame_id = m_worldFrameId;
+  segmented_cloud_msg.header.stamp = rostime;
+  m_pointCloudPub.publish(segmented_cloud_msg);
 
   if (publishBinaryMap)
     publishBinaryOctoMap(rostime);
