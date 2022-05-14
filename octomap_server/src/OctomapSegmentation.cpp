@@ -71,6 +71,17 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
 
   /* update Octomap according to the PCL segmentation results */
 
+  // とりあえず除去した床も着色してマージ
+  uint8_t random_r = rand() % 255;
+  uint8_t random_g = rand() % 255;
+  uint8_t random_b = rand() % 255;
+  for (auto itr = floor_cloud->begin(); itr != floor_cloud->end(); itr++)
+  {
+    itr->r = random_r;
+    itr->g = random_g;
+    itr->b = random_b;
+  }
+  *pcl_cloud += *floor_cloud;
 
   pcl::PointCloud<pcl::PointXYZRGB> simplified_pc;
   pcl::copyPointCloud(*pcl_cloud, simplified_pc);
@@ -253,7 +264,7 @@ bool OctomapSegmentation::clustering(const pcl::PointCloud<pcl::PointXYZRGBNorma
   /*カスタム条件の関数を指定*/
   cec.setConditionFunction(&OctomapSegmentation::CustomCondition);
   /*距離の閾値を設定*/
-  float cluster_tolerance = 0.3;
+  float cluster_tolerance = 0.2;
   cec.setClusterTolerance(cluster_tolerance);
   /*各クラスタのメンバの最小数を設定*/
   int min_cluster_size = 10;
@@ -307,7 +318,7 @@ bool OctomapSegmentation::CustomCondition(const pcl::PointXYZRGBNormal &seedPoin
       candidatePoint.normal_z);
   double angle = acos(N1.dot(N2) / N1.norm() / N2.norm()); //法線ベクトル間の角度[rad]
 
-  const double threshold_angle = 10.0; //閾値[deg]
+  const double threshold_angle = 5.0; //閾値[deg]
   if (angle / M_PI * 180.0 < threshold_angle)
     return true;
   else
