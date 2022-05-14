@@ -224,10 +224,6 @@ namespace octomap_server{
         n->setColor(r, g, b);
       }
     }
-    else
-    {
-      ROS_ERROR("[averageNodeColor] null ptr. Key was not found in tree.");
-    }
     return n;
   }
 
@@ -877,7 +873,6 @@ void OctomapServer::insertScan(const tf::Point& sensorOriginTf, const PCLPointCl
           ROS_ERROR("[Tsuru] PointCloud is competely black. Camera input cloud might not contain color information.");
           if(!m_octree->averageNodeColor(key, /*r=*/abs(it->normal_x) * 100, abs(it->normal_y) * 100, abs(it->normal_z) * 100))
           {
-            ROS_ERROR("No nodes at key. Let me assign a new node now.");
             m_octree->updateNode(key, true);
             m_octree->averageNodeColor(key, /*r=*/abs(it->normal_x) * 100, abs(it->normal_y) * 100, abs(it->normal_z) * 100);
             // continue;
@@ -887,7 +882,6 @@ void OctomapServer::insertScan(const tf::Point& sensorOriginTf, const PCLPointCl
         {
           if(!m_octree->averageNodeColor(key, /*r=*/it->r, /*g=*/it->g, /*b=*/it->b))
           {
-            ROS_ERROR("No nodes at key. Let me assign a new node now.");
             m_octree->updateNode(key, true);
             m_octree->averageNodeColor(key, /*r=*/it->r, /*g=*/it->g, /*b=*/it->b);
             // continue;

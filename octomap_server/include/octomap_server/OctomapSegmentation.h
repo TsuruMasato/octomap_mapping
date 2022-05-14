@@ -23,6 +23,7 @@
 #pragma GCC diagnostic pop
 
 #include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/segmentation/conditional_euclidean_clustering.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/filters/passthrough.h>
@@ -57,6 +58,9 @@ public:
   pcl::PointCloud<pcl::PointXYZRGB> segmentation(octomap_server::OctomapServer::OcTreeT *&target_octomap);
   bool remove_floor_RANSAC(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &input, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &floor_cloud, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &obstacle_cloud);
   bool plane_ransac(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &input_cloud, const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &output_cloud, double plane_thickness = 0.1, const Eigen::Vector3f &axis = Eigen::Vector3f(0.0, 0.0, 1.0));
+  bool clustering(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr input_cloud);
+  void change_colors_debug(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &clusters);
+  static bool CustomCondition(const pcl::PointXYZRGBNormal &seedPoint, const pcl::PointXYZRGBNormal &candidatePoint, float squaredDistance);
 
   /* floor_removal() */
   bool isSpeckleNode(const OcTreeKey &nKey, octomap_server::OctomapServer::OcTreeT *&target_octomap);

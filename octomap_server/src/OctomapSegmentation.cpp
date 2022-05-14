@@ -63,7 +63,8 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
   }
   
   // clustering
-  bool clustering(pcl_cloud);
+  ROS_ERROR("clustering");
+  bool clustering_success = clustering(pcl_cloud);
 
   // RANSAC wall detection
 
@@ -239,26 +240,30 @@ bool OctomapSegmentation::remove_floor_RANSAC(const pcl::PointCloud<pcl::PointXY
 }
 */
 
-bool OctomapSegmentation::clustering()
+bool OctomapSegmentation::clustering(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr input_cloud)
 {
+  ROS_ERROR("start Clustering");
+  std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> clusters;
   /*クラスタ後のインデックスが格納されるベクトル*/
   std::vector<pcl::PointIndices> cluster_indices;
   /*今回の主役（trueで初期化しないといけないらしい）*/
   pcl::ConditionalEuclideanClustering<pcl::PointXYZRGBNormal> cec(true);
   /*クラスリング対象の点群をinput*/
-  cec.setInputCloud(normal_cloud);
+  cec.setInputCloud(input_cloud);
   /*カスタム条件の関数を指定*/
-  cec.setConditionFunction(&CustomCondition);
+  cec.setConditionFunction(&OctomapSegmentation::CustomCondition);
   /*距離の閾値を設定*/
+  float cluster_tolerance = 0.3;
   cec.setClusterTolerance(cluster_tolerance);
   /*各クラスタのメンバの最小数を設定*/
+  int min_cluster_size = 10;
   cec.setMinClusterSize(min_cluster_size);
   /*各クラスタのメンバの最大数を設定*/
-  cec.setMaxClusterSize(normal_cloud->points.size());
+  cec.setMaxClusterSize(input_cloud->points.size());
   /*クラスリング実行*/
-  ROS_INFO("start clustering function");
+  ROS_WARN("start clustering function");
   cec.segment(cluster_indices);
-  ROS_INFO("finish clustering function");
+  ROS_WARN("finish clustering function");
   /*メンバ数が最小値以下のクラスタと最大値以上のクラスタを取得できる*/
   // cec.getRemovedClusters (small_clusters, large_clusters);
 
@@ -266,7 +271,7 @@ bool OctomapSegmentation::clustering()
 
   /*dividing（クラスタごとに点群を分割）*/
   pcl::ExtractIndices<pcl::PointXYZRGBNormal> ei;
-  ei.setInputCloud(normal_cloud);
+  ei.setInputCloud(input_cloud);
   ei.setNegative(false);
   for (size_t i = 0; i < cluster_indices.size(); i++)
   {
@@ -279,6 +284,55 @@ bool OctomapSegmentation::clustering()
     /*input*/
     clusters.push_back(tmp_clustered_points);
   }
+  ROS_ERROR("Clustering finish. It was devided into %d groups", clusters.size());
+
+  change_colors_debug(clusters);
+  input_cloud->clear();
+  for (size_t i = 0; i < clusters.size(); i++)
+  {
+    *input_cloud += *clusters.at(i);
+  }
+  return true;
+}
+
+bool OctomapSegmentation::CustomCondition(const pcl::PointXYZRGBNormal &seedPoint, const pcl::PointXYZRGBNormal &candidatePoint, float squaredDistance)
+{
+  Eigen::Vector3d N1(
+      seedPoint.normal_x,
+      seedPoint.normal_y,
+      seedPoint.normal_z);
+  Eigen::Vector3d N2(
+      candidatePoint.normal_x,
+      candidatePoint.normal_y,
+      candidatePoint.normal_z);
+  double angle = acos(N1.dot(N2) / N1.norm() / N2.norm()); //法線ベクトル間の角度[rad]
+
+  const double threshold_angle = 10.0; //閾値[deg]
+  if (angle / M_PI * 180.0 < threshold_angle)
+    return true;
+  else
+    return false;
+}
+
+
+void OctomapSegmentation::change_colors_debug(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &clusters)
+{
+  for (size_t i = 0; i < clusters.size(); i++)
+  {
+    auto target_cluster_ptr = clusters.at(i);
+    uint8_t random_r = rand() % 255;
+    uint8_t random_g = rand() % 255;
+    uint8_t random_b = rand() % 255;
+
+    // about i-th cluster,
+    for (auto itr = target_cluster_ptr->begin(); itr != target_cluster_ptr->end(); itr++)
+    {
+      itr->r = random_r;
+      itr->g = random_g;
+      itr->b = random_b;
+    }
+  }
+  return;
 }
 
 bool OctomapSegmentation::isSpeckleNode(const OcTreeKey &nKey, OctomapServer::OcTreeT* &target_octomap)
