@@ -69,8 +69,10 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
   bool clustering_success = clustering(obstacle_cloud, clusters);
   
   // primitive clustering
+  arrow_markers.markers.clear();
+  // TODO: multi-thread process.
   std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> cubic_clusters, plane_clusters, sylinder_clusters, the_others;
-  PCA_classify(clusters, cubic_clusters, plane_clusters, sylinder_clusters, the_others);
+  PCA_classify(clusters, arrow_markers, cubic_clusters, plane_clusters, sylinder_clusters, the_others);
 
   // RANSAC wall detection
   // ransac_wall_detection(plane_clusters);
@@ -171,132 +173,6 @@ bool OctomapSegmentation::ransac_horizontal_plane(const pcl::PointCloud<pcl::Poi
     }
   }
 }
-
-/*
-bool OctomapSegmentation::remove_floor_RANSAC(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &input, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &floor_cloud, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &obstacle_cloud)
-{
-  floor_cloud->header = input->header;
-  obstacle_cloud->header = input->header;
-
-  if (input->size() < 20)
-  {
-    ROS_WARN("[OctSegmentation::remove_floor_RANSAC] Input pointcloud is too small. No plane");
-    *obstacle_cloud = *input;
-    return false;
-  }
-  else
-  {
-    // plane detection for ground plane removal:
-    pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
-    pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-
-    // Create the segmentation object and set up:
-    pcl::SACSegmentation<PCLPointCloud> seg;
-    seg.setOptimizeCoefficients(true);
-    // TODO: maybe a filtering based on the surface normals might be more robust / accurate?
-    seg.setModelType(pcl::SACMODEL_PERPENDICULAR_PLANE);
-    seg.setMethodType(pcl::SAC_RANSAC);
-    seg.setMaxIterations(100);
-    seg.setDistanceThreshold(0.04);
-    seg.setAxis(Eigen::Vector3f(0, 0, 1));
-    seg.setEpsAngle(0.15);
-
-    const PCLPointCloud::Ptr cloud_filtered(input);
-    // Create the filtering object
-    pcl::ExtractIndices<PCLPoint> extract;
-    bool groundPlaneFound = false;
-
-    while (cloud_filtered->size() > 30 && !groundPlaneFound)
-    {
-      seg.setInputCloud(input);
-      seg.segment(*inliers, *coefficients);
-      if (inliers->indices.size() == 0)
-      {
-        ROS_INFO("PCL segmentation did not find any plane.");
-
-        break;
-      }
-
-      extract.setInputCloud(cloud_filtered.makeShared());
-      extract.setIndices(inliers);
-
-      if (-coefficients->values.at(3) < -0.8)
-      { // check d of the plane [m]
-        ROS_WARN("Ground plane found: %zu/%zu inliers. Coeff: %f %f %f %f, m_groundFilterPlaneDistance: %f", inliers->indices.size(), cloud_filtered.size(),
-                 coefficients->values.at(0), coefficients->values.at(1), coefficients->values.at(2), coefficients->values.at(3), m_groundFilterPlaneDistance);
-        extract.setNegative(false);
-        extract.filter(ground);
-
-        // remove ground points from full pointcloud:
-        // workaround for PCL bug:
-        if (inliers->indices.size() != cloud_filtered.size() || true)
-        {
-          extract.setNegative(true);
-          PCLPointCloud cloud_out;
-          extract.filter(cloud_out);
-          nonground += cloud_out;
-          cloud_filtered = cloud_out;
-        }
-
-        groundPlaneFound = true;
-      }
-      else
-      {
-        ROS_WARN("Horizontal plane (not ground) found: %zu/%zu inliers. Coeff: %f %f %f %f, m_groundFilterPlaneDistance: %f", inliers->indices.size(), cloud_filtered.size(),
-                 coefficients->values.at(0), coefficients->values.at(1), coefficients->values.at(2), coefficients->values.at(3), m_groundFilterPlaneDistance);
-        pcl::PointCloud<PCLPoint> cloud_out;
-        extract.setNegative(false);
-        extract.filter(cloud_out);
-        nonground += cloud_out;
-        // debug
-        //            pcl::PCDWriter writer;
-        //            writer.write<PCLPoint>("nonground_plane.pcd",cloud_out, false);
-
-        // remove current plane from scan for next iteration:
-        // workaround for PCL bug:
-        if (inliers->indices.size() != cloud_filtered.size())
-        {
-          extract.setNegative(true);
-          cloud_out.points.clear();
-          extract.filter(cloud_out);
-          cloud_filtered = cloud_out;
-        }
-        else
-        {
-          cloud_filtered.points.clear();
-        }
-      }
-    }
-    // TODO: also do this if overall starting pointcloud too small?
-    if (!groundPlaneFound)
-    { // no plane found or remaining points too small
-      ROS_WARN("No ground plane found in scan");
-
-      // do a rough fitlering on height to prevent spurious obstacles
-      /* [Tsuru] 結構ヤバイ処理。点群の上下一定範囲を強制的に床平面と見做して分割してる */
-      /*
-      pcl::PassThrough<PCLPoint> second_pass;
-      second_pass.setFilterFieldName("z");
-      second_pass.setFilterLimits(-m_groundFilterPlaneDistance, m_groundFilterPlaneDistance);
-      second_pass.setInputCloud(pc.makeShared());
-      second_pass.filter(ground);
-
-      second_pass.setFilterLimitsNegative (true);
-      second_pass.filter(nonground);
-      
-      nonground = pc; // [Tsuru] regard all points as obstacles.
-    }
-
-    // debug:
-    //        pcl::PCDWriter writer;
-    //        if (pc_ground.size() > 0)
-    //          writer.write<PCLPoint>("ground.pcd",pc_ground, false);
-    //        if (pc_nonground.size() > 0)
-    //          writer.write<PCLPoint>("nonground.pcd",pc_nonground, false);
-  }
-  return true;
-}
-*/
 
 bool OctomapSegmentation::clustering(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr input_cloud, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &output_results)
 {
@@ -414,9 +290,8 @@ void OctomapSegmentation::add_color_and_accumulate(std::vector<pcl::PointCloud<p
   }
 }
 
-bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &input_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &cubic_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &plane_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &sylinder_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &the_others)
+bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &input_clusters, visualization_msgs::MarkerArray &marker_array, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &cubic_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &plane_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &sylinder_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &the_others)
 {
-  visualization_msgs::MarkerArray debug_marker_array;
   int marker_id = 0;
   for (size_t i = 0; i < input_clusters.size(); i++)
   {
@@ -442,6 +317,7 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
 
     case 2:
       plane_clusters.push_back(target_ptr);
+      pushEigenMarker(pca, marker_id, marker_array, 1.0, "map");
       break;
 
     case 1:
@@ -469,12 +345,12 @@ void OctomapSegmentation::pushEigenMarker(pcl::PCA<PCLPoint> &pca,
                                           const std::string &frame_id)
 {
   visualization_msgs::Marker marker;
-  marker.lifetime = ros::Duration(0.1);
+  marker.lifetime = ros::Duration(1.0);
   marker.header.frame_id = frame_id;
   marker.ns = "cluster_eigen";
   marker.type = visualization_msgs::Marker::ARROW;
-  marker.scale.y = 0.01;
-  marker.scale.z = 0.01;
+  marker.scale.y = 0.03;
+  marker.scale.z = 0.03;
   marker.pose.position.x = pca.getMean().coeff(0);
   marker.pose.position.y = pca.getMean().coeff(1);
   marker.pose.position.z = pca.getMean().coeff(2);
@@ -488,6 +364,7 @@ void OctomapSegmentation::pushEigenMarker(pcl::PCA<PCLPoint> &pca,
   qy.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_y);
   qz.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_z);
 
+  /*
   marker.id = marker_id++;
   marker.scale.x = pca.getEigenValues().coeff(0) * scale;
   marker.pose.orientation.x = qx.x();
@@ -509,17 +386,21 @@ void OctomapSegmentation::pushEigenMarker(pcl::PCA<PCLPoint> &pca,
   marker.color.b = 0.0;
   marker.color.g = 1.0;
   marker.color.r = 0.0;
+  marker.color.a = 1.0;
   marker_array.markers.push_back(marker);
+  */
 
+  /* visualize only 3rd Eigen Vector, because it is the plane normal vector.*/
   marker.id = marker_id++;
-  marker.scale.x = pca.getEigenValues().coeff(2) * scale;
+  marker.scale.x = 0.3;
   marker.pose.orientation.x = qz.x();
   marker.pose.orientation.y = qz.y();
   marker.pose.orientation.z = qz.z();
   marker.pose.orientation.w = qz.w();
-  marker.color.b = 1.0;
-  marker.color.g = 0.0;
-  marker.color.r = 0.0;
+  marker.color.b = 0.1;
+  marker.color.g = 0.1;
+  marker.color.r = 1.0;
+  marker.color.a = 1.0;
   marker_array.markers.push_back(marker);
 }
 

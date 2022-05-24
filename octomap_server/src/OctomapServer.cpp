@@ -517,6 +517,7 @@ OctomapServer::OctomapServer(const ros::NodeHandle private_nh_, const ros::NodeH
   m_pointCloudPub = m_nh.advertise<sensor_msgs::PointCloud2>("octomap_point_cloud_centers", 1, m_latchedTopics);
   m_mapPub = m_nh.advertise<nav_msgs::OccupancyGrid>("projected_map", 5, m_latchedTopics);
   m_fmarkerPub = m_nh.advertise<visualization_msgs::MarkerArray>("free_cells_vis_array", 1, m_latchedTopics);
+  m_normalVectorPub = m_nh.advertise<visualization_msgs::MarkerArray>("normal_vector_array", 1, true);
 
   m_pointCloudSub = new message_filters::Subscriber<sensor_msgs::PointCloud2> (m_nh, "cloud_in", 5);
   m_tfPointCloudSub = new tf::MessageFilter<sensor_msgs::PointCloud2> (*m_pointCloudSub, m_tfListener, m_worldFrameId, 5);
@@ -1362,6 +1363,10 @@ void OctomapServer::publishAll(const ros::Time& rostime){
   segmented_cloud_msg.header.frame_id = m_worldFrameId;
   segmented_cloud_msg.header.stamp = rostime;
   m_pointCloudPub.publish(segmented_cloud_msg);
+
+  /* publish Normal Vector arrows */
+  ROS_ERROR("arrow_markers_.size : %d", arrow_markers_.markers.size());
+  m_normalVectorPub.publish(arrow_markers_);
 
   if (publishBinaryMap)
     publishBinaryOctoMap(rostime);
