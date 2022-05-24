@@ -365,7 +365,7 @@ bool OctomapSegmentation::CustomCondition(const pcl::PointXYZRGBNormal &seedPoin
       candidatePoint.normal_z);
   double angle = acos(N1.dot(N2) / N1.norm() / N2.norm()); //法線ベクトル間の角度[rad]
 
-  const double threshold_angle = 5.0; //閾値[deg]
+  const double threshold_angle = 3.0; //閾値[deg]
   if (angle / M_PI * 180.0 < threshold_angle)
     return true;
   else
