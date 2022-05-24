@@ -397,7 +397,7 @@ OctomapServer::OctomapServer(const ros::NodeHandle private_nh_, const ros::NodeH
   m_incrementalUpdate(false),
   m_initConfig(true),
   use_virtual_wall_(true),
-  dynamic_local_mode_(true),
+  dynamic_local_mode_(false),
   worst_insertion_time_(0.0),
   worst_publication_time_(0.0)
 {
@@ -654,14 +654,14 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
   pcl::PassThrough<PCLPoint> pass_z;
   pass_z.setFilterFieldName("z");
 
-  if (dynamic_local_mode_)
+  if (dynamic_local_mode_ || true)
   {
     /* move pass_through filter limits according to the current camera pos */
     auto camera_pos = sensorToWorldTf.getOrigin();
-    dynamic_area_x_max_ = camera_pos.x() + 2.0;
-    dynamic_area_x_min_ = camera_pos.x() - 2.0;
-    dynamic_area_y_max_ = camera_pos.y() + 2.0;
-    dynamic_area_y_min_ = camera_pos.y() - 2.0;
+    dynamic_area_x_max_ = camera_pos.x() + (m_maxRange / 1.41f);
+    dynamic_area_x_min_ = camera_pos.x() - (m_maxRange / 1.41f);
+    dynamic_area_y_max_ = camera_pos.y() + (m_maxRange / 1.41f);
+    dynamic_area_y_min_ = camera_pos.y() - (m_maxRange / 1.41f);
     // ROS_WARN("camera_x: %1.2f, camera_y: %1.2f", camera_pos.x(), camera_pos.y());
     
     pass_x.setFilterLimits(dynamic_area_x_min_, dynamic_area_x_max_);
@@ -1174,7 +1174,7 @@ void OctomapServer::publishAll(const ros::Time& rostime){
     /* Dynamic Elimination  */
     /* ******************** */
 
-    if(dynamic_local_mode_ && false)
+    if(dynamic_local_mode_)
     {
       /* judge if the node is outside of the dynamic area. */
       if (x < dynamic_area_x_min_ || x > dynamic_area_x_max_ 

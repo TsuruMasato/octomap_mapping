@@ -56,7 +56,7 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
   // Remove Floor plane
   pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr floor_cloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
   pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr obstacle_cloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-  bool found_floor = plane_ransac(/*input*/ pcl_cloud, /*output 1*/ floor_cloud);
+  bool found_floor = plane_ransac(/*input*/ pcl_cloud, /*output 1*/ floor_cloud, /*output 2*/ obstacle_cloud);
   if(!found_floor)
   {
     ROS_ERROR("Failed Floor in Octomap by RANSAC!!");
@@ -64,7 +64,7 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
   
   // clustering
   ROS_ERROR("clustering");
-  bool clustering_success = clustering(pcl_cloud);
+  bool clustering_success = clustering(obstacle_cloud);
 
   // RANSAC wall detection
 
@@ -72,23 +72,23 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
   /* update Octomap according to the PCL segmentation results */
 
   // とりあえず除去した床も着色してマージ
-  uint8_t random_r = rand() % 255;
-  uint8_t random_g = rand() % 255;
-  uint8_t random_b = rand() % 255;
+  uint8_t floor_r = 100;
+  uint8_t floor_g = 255;
+  uint8_t floor_b = 100;
   for (auto itr = floor_cloud->begin(); itr != floor_cloud->end(); itr++)
   {
-    itr->r = random_r;
-    itr->g = random_g;
-    itr->b = random_b;
+    itr->r = floor_r;
+    itr->g = floor_g;
+    itr->b = floor_b;
   }
-  *pcl_cloud += *floor_cloud;
+  *obstacle_cloud += *floor_cloud;
 
   pcl::PointCloud<pcl::PointXYZRGB> simplified_pc;
-  pcl::copyPointCloud(*pcl_cloud, simplified_pc);
+  pcl::copyPointCloud(*obstacle_cloud, simplified_pc);
   return simplified_pc;
 };
 
-bool OctomapSegmentation::plane_ransac(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &input_cloud, const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &output_cloud, double plane_thickness, const Eigen::Vector3f &axis)
+bool OctomapSegmentation::plane_ransac(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &input_cloud, const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &floor_cloud, const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &obstacle_cloud, double plane_thickness, const Eigen::Vector3f &axis)
 {
   // ROS_INFO("plane_ransac");
   pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
@@ -114,15 +114,57 @@ bool OctomapSegmentation::plane_ransac(const pcl::PointCloud<pcl::PointXYZRGBNor
     ROS_WARN("plane size is not enough large to remove.");
     return false;
   }
-  pcl::ExtractIndices<pcl::PointXYZRGBNormal> extract;
-  extract.setInputCloud(input_cloud);
-  extract.setIndices(inliers);
-  extract.setNegative(false);
-  extract.filter(*output_cloud);
-  extract.setNegative(true);
-  extract.filter(*input_cloud);
 
-  return true;
+  if (-coefficients->values.at(3) < -0.5) // when the height of the plane is enough low:
+  {
+    ROS_WARN("floor height : %f", -coefficients->values.at(3));
+    pcl::ExtractIndices<pcl::PointXYZRGBNormal> extract;
+    extract.setInputCloud(input_cloud);
+    extract.setIndices(inliers);
+    extract.setNegative(false);
+    extract.filter(*floor_cloud);
+    extract.setNegative(true);
+    extract.filter(*obstacle_cloud);
+    return true;
+  }
+
+  else
+  {
+    ROS_WARN("ceiling height : %f", -coefficients->values.at(3));
+    // the detected plane must be a ceiling. remove it and try RANSAC again.
+    pcl::PointCloud<OctomapServer::PCLPoint>::Ptr ceiling_cloud(new pcl::PointCloud<OctomapServer::PCLPoint>);
+    pcl::ExtractIndices<pcl::PointXYZRGBNormal> extract;
+    extract.setInputCloud(input_cloud);
+    extract.setIndices(inliers);
+    extract.setNegative(false);
+    extract.filter(*ceiling_cloud);
+    extract.setNegative(true);
+    extract.filter(*input_cloud); // keep the whole cloud in "input_cloud" except the ceiling.
+
+    /* 2nd RANSAC with same params. */
+    inliers->indices.clear();
+    coefficients->values.clear();
+    seg.segment(*inliers, *coefficients);
+
+    if (inliers->indices.size() < 20)
+    {
+      ROS_WARN("plane size is not enough large to remove.");
+      return false;
+    }
+    ROS_WARN("[2nd] floor height : %f", -coefficients->values.at(3));
+    if (-coefficients->values.at(3) < -0.5) // the floor hight must be low.
+    {
+      // extract.setInputCloud(input_cloud);
+      extract.setIndices(inliers);
+      extract.setNegative(false);
+      extract.filter(*floor_cloud);
+      extract.setNegative(true);
+      extract.filter(*obstacle_cloud);
+      return true;
+    }
+    else
+      return false;
+  }
 }
 
 /*
@@ -264,10 +306,10 @@ bool OctomapSegmentation::clustering(const pcl::PointCloud<pcl::PointXYZRGBNorma
   /*カスタム条件の関数を指定*/
   cec.setConditionFunction(&OctomapSegmentation::CustomCondition);
   /*距離の閾値を設定*/
-  float cluster_tolerance = 0.2;
+  float cluster_tolerance = 0.12;
   cec.setClusterTolerance(cluster_tolerance);
   /*各クラスタのメンバの最小数を設定*/
-  int min_cluster_size = 10;
+  int min_cluster_size = 30;
   cec.setMinClusterSize(min_cluster_size);
   /*各クラスタのメンバの最大数を設定*/
   cec.setMaxClusterSize(input_cloud->points.size());
