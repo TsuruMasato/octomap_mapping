@@ -628,13 +628,13 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
   pcl::fromROSMsg(*cloud, *pc);
 
   /* subtract points for accerelation */  //not so meaningful...
-  ROS_WARN("original_size: %d", pc->size());
+  // ROS_WARN("original_size: %d", pc->size());
   if (!subtract_point_cloud(pc))
   {
     ROS_ERROR("Failed to subtract points in the octomap_server callback function");
     return;
   }
-  ROS_WARN("reduced_size: %d", pc->size());
+  // ROS_WARN("reduced_size: %d", pc->size());
 
   tf::StampedTransform sensorToWorldTf;
   try {
@@ -769,16 +769,15 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
 
     if (m_maxRange > 0.0 || use_virtual_wall_ )
     {
-      ROS_ERROR("virtual wall system. m_maxRange: %f", m_maxRange);
       auto virtual_wall_base = *pc; // bug: PCL's unknown bug. we always have to build pointcloud basing on sensor input cloud. (header? something)
       virtual_wall_base.clear();
       virtual_wall_base += virtual_wall_cloud_;
 
       pcl::transformPointCloud(virtual_wall_base, virtual_wall_base, sensorToWorld);
-      ROS_ERROR("virtual wall size: %d", virtual_wall_base.size());
-      ROS_ERROR("pc_nonground size: %d", pc_nonground.size());
+      // ROS_ERROR("virtual wall size: %d", virtual_wall_base.size());
+      // ROS_ERROR("pc_nonground size: %d", pc_nonground.size());
       pc_nonground += virtual_wall_base;
-      ROS_ERROR("merged pc size: %d", pc_nonground.size());
+      // ROS_ERROR("merged pc size: %d", pc_nonground.size());
     }    
     pc_ground.header = pc->header;
     pc_nonground.header = pc->header;
@@ -799,7 +798,8 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
 
   OctomapSegmentation seg;
   segmented_pc_.clear();
-  segmented_pc_ = seg.segmentation(m_octree);
+  arrow_markers_.markers.clear();
+  segmented_pc_ = seg.segmentation(m_octree, arrow_markers_);
 
   publishAll(cloud->header.stamp);
 }
@@ -1486,7 +1486,7 @@ bool OctomapServer::subtract_point_cloud(PCLPointCloud::Ptr point_cloud)
   random_sampler.setSample(point_cloud->size() / 10);
   random_sampler.filter(*point_cloud);
   double total_elapsed = (ros::WallTime::now() - startTime).toSec();
-  ROS_WARN("random_sample used %f sec)", total_elapsed);
+  // ROS_WARN("random_sample used %f sec)", total_elapsed);
   // ROS_WARN("worst insertion time: %.2f sec)", worst_insertion_time_);
   return true; //success, true;
 }
