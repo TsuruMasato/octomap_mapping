@@ -111,7 +111,8 @@ bool OctomapSegmentation::plane_ransac(const pcl::PointCloud<pcl::PointXYZRGBNor
 
   if (inliers->indices.size() < 20)
   {
-    ROS_WARN("plane size is not enough large to remove.");
+    ROS_WARN("[OctomapSegmentation::plane_ransac] no horizontal plane in input_cloud");
+    pcl::copyPointCloud(*input_cloud, *obstacle_cloud);
     return false;
   }
 
@@ -163,7 +164,11 @@ bool OctomapSegmentation::plane_ransac(const pcl::PointCloud<pcl::PointXYZRGBNor
       return true;
     }
     else
-      return false;
+    {
+      ROS_WARN("[OctomapSegmentation::plane_ransac] found undesired horizontal plane (maybe tables)");
+      pcl::copyPointCloud(*input_cloud, *obstacle_cloud);
+      return true;
+    }
   }
 }
 
