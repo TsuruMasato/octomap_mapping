@@ -544,7 +544,7 @@ protected:
   double worst_insertion_time_, worst_publication_time_;
 
   pcl::PointCloud<pcl::PointXYZRGB> segmented_pc_;
-  visualization_msgs::MarkerArray arrow_markers_;
+  visualization_msgs::MarkerArray marker_array_;
 
   bool subtract_point_cloud(PCLPointCloud::Ptr point_cloud);
   };

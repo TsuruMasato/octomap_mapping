@@ -6,7 +6,7 @@ OctomapSegmentation::OctomapSegmentation()
   // pub_normal_vector_markers_ = nh_.advertise<visualization_msgs::MarkerArray>("normal_vectors", 1);
 }
 
-pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServer::OcTreeT* &target_octomap, visualization_msgs::MarkerArray &arrow_markers)
+pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServer::OcTreeT* &target_octomap, visualization_msgs::MarkerArray &marker_array)
 {
   // ROS_ERROR("OctomapSegmentation::segmentation() start");
   // init pointcloud:
@@ -85,7 +85,7 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
     floor_marker.color.g = 1.0;
     floor_marker.color.b = 0.9;
     floor_marker.color.a = 1.0;
-    arrow_markers.markers.push_back(floor_marker);
+    marker_array.markers.push_back(floor_marker);
   }
 
   // clustering
@@ -93,10 +93,10 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
   bool clustering_success = clustering(obstacle_cloud, clusters);
   
   // primitive clustering
-  // arrow_markers.markers.clear();
+  // marker_array.markers.clear();
   // TODO: multi-thread process.
   std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> cubic_clusters, plane_clusters, sylinder_clusters, the_others;
-  PCA_classify(clusters, arrow_markers, cubic_clusters, plane_clusters, sylinder_clusters, the_others);
+  PCA_classify(clusters, marker_array, cubic_clusters, plane_clusters, sylinder_clusters, the_others);
 
   // RANSAC wall detection
   // ransac_wall_detection(plane_clusters);
@@ -318,7 +318,7 @@ void OctomapSegmentation::add_color_and_accumulate(std::vector<pcl::PointCloud<p
   }
 }
 
-bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &input_clusters, visualization_msgs::MarkerArray &arrow_array, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &cubic_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &plane_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &sylinder_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &the_others)
+bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &input_clusters, visualization_msgs::MarkerArray &marker_array, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &cubic_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &plane_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &sylinder_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &the_others)
 {
   int marker_id = 1; // id:0 is floor
   for (size_t i = 0; i < input_clusters.size(); i++)
@@ -345,7 +345,7 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
 
     case 2:
       plane_clusters.push_back(target_ptr);
-      pushEigenMarker(pca, marker_id, arrow_array, 1.0, "map");
+      pushEigenMarker(pca, marker_id, marker_array, 1.0, "map");
       break;
 
     case 1:
@@ -366,7 +366,7 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
 
 void OctomapSegmentation::pushEigenMarker(pcl::PCA<PCLPoint> &pca,
                                           int &marker_id,
-                                          visualization_msgs::MarkerArray &arrow_array,
+                                          visualization_msgs::MarkerArray &marker_array,
                                           double scale,
                                           const std::string &frame_id)
 {
@@ -405,7 +405,7 @@ void OctomapSegmentation::pushEigenMarker(pcl::PCA<PCLPoint> &pca,
   marker.color.g = 0.1;
   marker.color.r = 1.0;
   marker.color.a = 1.0;
-  arrow_array.markers.push_back(marker);
+  marker_array.markers.push_back(marker);
 
   // text "plane"
   marker.id = marker_id++;
@@ -417,7 +417,7 @@ void OctomapSegmentation::pushEigenMarker(pcl::PCA<PCLPoint> &pca,
   marker.color.r = 0.9;
   marker.color.a = 1.0;
   marker.text = "Normal";
-  arrow_array.markers.push_back(marker);
+  marker_array.markers.push_back(marker);
 
   // visualize plane vertices
   /*ゴミコード
@@ -449,7 +449,7 @@ void OctomapSegmentation::pushEigenMarker(pcl::PCA<PCLPoint> &pca,
   marker.points.push_back(convert_eigen_to_geomsg(point_rm));
   // marker.points.push_back(convert_eigen_to_geomsg(point_lm));
 
-  arrow_array.markers.push_back(marker);
+  marker_array.markers.push_back(marker);
   */
 }
 

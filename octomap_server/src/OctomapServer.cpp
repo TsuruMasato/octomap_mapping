@@ -799,8 +799,8 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
 
   OctomapSegmentation seg;
   segmented_pc_.clear();
-  arrow_markers_.markers.clear();
-  segmented_pc_ = seg.segmentation(m_octree, arrow_markers_);
+  marker_array_.markers.clear();
+  segmented_pc_ = seg.segmentation(m_octree, marker_array_);
 
   publishAll(cloud->header.stamp);
 }
@@ -1365,8 +1365,8 @@ void OctomapServer::publishAll(const ros::Time& rostime){
   m_pointCloudPub.publish(segmented_cloud_msg);
 
   /* publish Normal Vector arrows */
-  ROS_ERROR("arrow_markers_.size : %d", arrow_markers_.markers.size());
-  m_normalVectorPub.publish(arrow_markers_);
+  ROS_ERROR("marker_array_.size : %d", marker_array_.markers.size());
+  m_normalVectorPub.publish(marker_array_);
 
   if (publishBinaryMap)
     publishBinaryOctoMap(rostime);
