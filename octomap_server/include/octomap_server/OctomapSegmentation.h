@@ -58,20 +58,21 @@ public:
   /* main function */
   pcl::PointCloud<pcl::PointXYZRGB> segmentation(octomap_server::OctomapServer::OcTreeT* &target_octomap, visualization_msgs::MarkerArray &arrow_markers);
   bool remove_floor_RANSAC(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &input, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &floor_cloud, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &obstacle_cloud);
-  bool ransac_horizontal_plane(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &input_cloud, const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &floor_cloud, const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &obstacle_cloud, double plane_thickness = 0.1, const Eigen::Vector3f &axis = Eigen::Vector3f(0.0, 0.0, 1.0));
+  pcl::ModelCoefficients ransac_horizontal_plane(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &input_cloud, const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &floor_cloud, const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &obstacle_cloud, double plane_thickness = 0.1, const Eigen::Vector3f &axis = Eigen::Vector3f(0.0, 0.0, 1.0));
   bool clustering(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr input_cloud, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &output_results);
   void change_colors_debug(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &clusters);
   void add_color_and_accumulate(pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &point_cloud, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr result_cloud, uint8_t r = 255, uint8_t g = 255, uint8_t b = 255);
   void add_color_and_accumulate(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &clusters, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr result_cloud, uint8_t r = 255, uint8_t g = 255, uint8_t b = 255);
   static bool CustomCondition(const pcl::PointXYZRGBNormal &seedPoint, const pcl::PointXYZRGBNormal &candidatePoint, float squaredDistance);
-  bool PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &input_clusters, visualization_msgs::MarkerArray &marker_array, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &cubic_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &plane_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &sylinder_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &the_others);
+  bool PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &input_clusters, visualization_msgs::MarkerArray &arrow_array, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &cubic_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &plane_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &sylinder_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &the_others);
   bool ransac_wall_detection(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &input_clusters);
-  void pushEigenMarker(pcl::PCA<PCLPoint> &pca, int &marker_id, visualization_msgs::MarkerArray &marker_array, double scale, const std::string &frame_id);
+  void pushEigenMarker(pcl::PCA<PCLPoint> &pca, int &marker_id, visualization_msgs::MarkerArray &arrow_array, double scale, const std::string &frame_id);
   /* floor_removal() */
   bool isSpeckleNode(const OcTreeKey &nKey, octomap_server::OctomapServer::OcTreeT *&target_octomap);
 
 private:
   bool tsuru_ = true;
+  geometry_msgs::Point convert_eigen_to_geomsg(const Eigen::Vector3f input_vector);
   // ros::NodeHandle nh_;
   // ros::Publisher pub_segmented_pc_;
   // ros::Publisher pub_normal_vector_markers_;
