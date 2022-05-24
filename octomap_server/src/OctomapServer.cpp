@@ -489,16 +489,16 @@ OctomapServer::OctomapServer(const ros::NodeHandle private_nh_, const ros::NodeH
 
   /* Tsuru add */
   virtual_wall_cloud_.clear();
-  float view_angle = M_PI * 0.75;
-  for (int8_t i = -50; i < 50; i++)
+  float view_angle = M_PI * 0.75; //AzureKinect's view angle
+  for (int8_t i = -25; i < 25; i++)
   {
-    for (int8_t j = -60; j < 30; j++)
+    for (int8_t j = -30; j < 15; j++)
     {
-      float theta = i * view_angle / 100.0;
+      float theta = i * view_angle / 50.0;
       PCLPoint tmp_point;
-      tmp_point.x = m_maxRange * sin(theta) * 1.05;
-      tmp_point.y = j / 30.0;
-      tmp_point.z = m_maxRange * cos(theta) * 1.05;
+      tmp_point.x = m_maxRange * sin(theta) * 1.1;
+      tmp_point.y = j / 15.0;
+      tmp_point.z = m_maxRange * cos(theta) * 1.1;
       virtual_wall_cloud_.push_back(tmp_point);
     }
   }
@@ -677,12 +677,6 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
   }
   
   
-  // /* add a virtual wall in point cloud, at outside of m_maxRange. */
-  // if(m_maxRange > 0.0)
-  // {
-  //   pc += virtual_wall_cloud;
-  // }
-
   PCLPointCloud pc_ground; // segmented ground plane
   PCLPointCloud pc_nonground; // everything else
 
@@ -767,22 +761,25 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
     // pc_array.push_back(pc_nonground);
     // primitive_array.push_back(ExOcTreeNode::ShapePrimitive::OTHER);
 
+    pc_nonground = *pc; // pc_nonground is empty without ground segmentation -> now always use ground segmentation
+
     /* ************************************************************ */
     /* add a virtual wall in point cloud, at outside of m_maxRange. */
     /* ************************************************************ */
 
     if (m_maxRange > 0.0 || use_virtual_wall_ )
     {
-
-      auto virtual_wall_base = *pc; //bug: unknown bug. we always have to build pointcloud basing on sensor input cloud. (header? something)
+      ROS_ERROR("virtual wall system. m_maxRange: %f", m_maxRange);
+      auto virtual_wall_base = *pc; // bug: PCL's unknown bug. we always have to build pointcloud basing on sensor input cloud. (header? something)
       virtual_wall_base.clear();
       virtual_wall_base += virtual_wall_cloud_;
 
       pcl::transformPointCloud(virtual_wall_base, virtual_wall_base, sensorToWorld);
+      ROS_ERROR("virtual wall size: %d", virtual_wall_base.size());
+      ROS_ERROR("pc_nonground size: %d", pc_nonground.size());
       pc_nonground += virtual_wall_base;
-    }
-
-    pc_nonground = *pc; // pc_nonground is empty without ground segmentation -> now always use ground segmentation
+      ROS_ERROR("merged pc size: %d", pc_nonground.size());
+    }    
     pc_ground.header = pc->header;
     pc_nonground.header = pc->header;
   }

@@ -2,7 +2,8 @@
 
 OctomapSegmentation::OctomapSegmentation()
 {
-  pub_segmented_pc_ = nh_.advertise<sensor_msgs::PointCloud2>("segmented_pc", 10);
+  pub_segmented_pc_ = nh_.advertise<sensor_msgs::PointCloud2>("segmented_pc", 1);
+  pub_normal_vector_markers_ = nh_.advertise<visualization_msgs::MarkerArray>("normal_vectors", 1);
 }
 
 pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServer::OcTreeT *&target_octomap)
@@ -64,17 +65,18 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
   
   // clustering
   ROS_ERROR("clustering");
-  bool clustering_success = clustering(obstacle_cloud);
+  std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> clusters;
+  bool clustering_success = clustering(obstacle_cloud, clusters);
 
   // RANSAC wall detection
-
+  ransac_wall_detection(clusters);
 
   /* update Octomap according to the PCL segmentation results */
 
   // とりあえず除去した床も着色してマージ
-  uint8_t floor_r = 100;
+  uint8_t floor_r = 191;
   uint8_t floor_g = 255;
-  uint8_t floor_b = 100;
+  uint8_t floor_b = 128;
   for (auto itr = floor_cloud->begin(); itr != floor_cloud->end(); itr++)
   {
     itr->r = floor_r;
@@ -298,10 +300,10 @@ bool OctomapSegmentation::remove_floor_RANSAC(const pcl::PointCloud<pcl::PointXY
 }
 */
 
-bool OctomapSegmentation::clustering(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr input_cloud)
+bool OctomapSegmentation::clustering(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr input_cloud, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &output_results)
 {
   ROS_ERROR("start Clustering");
-  std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> clusters;
+  // std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> clusters;
   /*クラスタ後のインデックスが格納されるベクトル*/
   std::vector<pcl::PointIndices> cluster_indices;
   /*今回の主役（trueで初期化しないといけないらしい）*/
@@ -340,15 +342,15 @@ bool OctomapSegmentation::clustering(const pcl::PointCloud<pcl::PointXYZRGBNorma
     ei.setIndices(tmp_clustered_indices);
     ei.filter(*tmp_clustered_points);
     /*input*/
-    clusters.push_back(tmp_clustered_points);
+    output_results.push_back(tmp_clustered_points);
   }
-  ROS_ERROR("Clustering finish. It was devided into %d groups", clusters.size());
+  ROS_ERROR("Clustering finish. It was devided into %d groups", output_results.size());
 
-  change_colors_debug(clusters);
+  change_colors_debug(output_results);
   input_cloud->clear();
-  for (size_t i = 0; i < clusters.size(); i++)
+  for (size_t i = 0; i < output_results.size(); i++)
   {
-    *input_cloud += *clusters.at(i);
+    *input_cloud += *output_results.at(i);
   }
   return true;
 }
@@ -391,6 +393,11 @@ void OctomapSegmentation::change_colors_debug(std::vector<pcl::PointCloud<pcl::P
     }
   }
   return;
+}
+
+bool OctomapSegmentation::ransac_wall_detection(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &input_clusters)
+{
+  return true;
 }
 
 bool OctomapSegmentation::isSpeckleNode(const OcTreeKey &nKey, OctomapServer::OcTreeT* &target_octomap)
