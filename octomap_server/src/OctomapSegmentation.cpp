@@ -68,7 +68,7 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
     visualization_msgs::Marker floor_marker;
     floor_marker.header.frame_id = "/map";
     // floor_marker.lifetime = ros::Duration(1.0);
-    floor_marker.ns = "cluster_eigen";
+    floor_marker.ns = "floor_plane";
     floor_marker.type = visualization_msgs::Marker::CUBE;
     floor_marker.id = 0;
     floor_marker.pose.position.x = 0.0f;
@@ -320,7 +320,7 @@ void OctomapSegmentation::add_color_and_accumulate(std::vector<pcl::PointCloud<p
 
 bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &input_clusters, visualization_msgs::MarkerArray &marker_array, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &cubic_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &plane_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &sylinder_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &the_others)
 {
-  int marker_id = 1; // id:0 is floor
+  int marker_id = 1; // id:0 is used for floor
   for (size_t i = 0; i < input_clusters.size(); i++)
   {
     auto target_ptr = input_clusters.at(i);
@@ -335,7 +335,8 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
     bool is_meaningful_y = norm_y > 3.0f;
     bool is_meaningful_z = norm_z > 3.0f;
     int8_t num_meaningful_axis = is_meaningful_x + is_meaningful_y + is_meaningful_z;
-
+    Eigen::Vector3f min_obb, max_obb, center_obb;
+    Eigen::Matrix3f rot_obb;
     /* if there are two meaningful norms, this cluster is a plane */
     switch (num_meaningful_axis)
     {
@@ -345,7 +346,9 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
 
     case 2:
       plane_clusters.push_back(target_ptr);
-      pushEigenMarker(pca, marker_id, marker_array, 1.0, "map");
+      add_wall_marker(pca, marker_id, marker_array, "map");
+      computeOBB(target_ptr, pca, min_obb, max_obb, center_obb, rot_obb);
+      add_OBB_marker(min_obb, max_obb, center_obb, rot_obb, marker_id, marker_array, "map");
       break;
 
     case 1:
@@ -364,16 +367,15 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
   return true;
 }
 
-void OctomapSegmentation::pushEigenMarker(pcl::PCA<PCLPoint> &pca,
+void OctomapSegmentation::add_wall_marker(pcl::PCA<PCLPoint> &pca,
                                           int &marker_id,
                                           visualization_msgs::MarkerArray &marker_array,
-                                          double scale,
                                           const std::string &frame_id)
 {
   visualization_msgs::Marker marker;
-  // marker.lifetime = ros::Duration(1.0);
+  marker.lifetime = ros::Duration(3.0);
   marker.header.frame_id = frame_id;
-  marker.ns = "cluster_eigen";
+  marker.ns = "normal_vectors";
   marker.type = visualization_msgs::Marker::ARROW;
   marker.scale.x = 0.4;   // length:40cm
   marker.scale.y = 0.04;  // width of the allow
@@ -388,12 +390,12 @@ void OctomapSegmentation::pushEigenMarker(pcl::PCA<PCLPoint> &pca,
   Eigen::Quaternionf qx, qy, qz;
   Eigen::Matrix3f eigen_vec = pca.getEigenVectors();
   Eigen::Vector3f eigen_values = pca.getEigenValues();
-  Eigen::Vector3f axis_x(eigen_vec.coeff(0, 0), eigen_vec.coeff(1, 0), eigen_vec.coeff(2, 0));
-  Eigen::Vector3f axis_y(eigen_vec.coeff(0, 1), eigen_vec.coeff(1, 1), eigen_vec.coeff(2, 1));
-  Eigen::Vector3f axis_z(eigen_vec.coeff(0, 2), eigen_vec.coeff(1, 2), eigen_vec.coeff(2, 2));
-  qx.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_x);
-  qy.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_y);
-  qz.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_z);
+  Eigen::Vector3f axis_1st(eigen_vec.coeff(0, 0), eigen_vec.coeff(1, 0), eigen_vec.coeff(2, 0));
+  Eigen::Vector3f axis_2nd(eigen_vec.coeff(0, 1), eigen_vec.coeff(1, 1), eigen_vec.coeff(2, 1));
+  Eigen::Vector3f axis_3rd(eigen_vec.coeff(0, 2), eigen_vec.coeff(1, 2), eigen_vec.coeff(2, 2));
+  qx.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_1st);
+  qy.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_2nd);
+  qz.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_3rd);
 
   /* visualize arrow only with the 3rd Eigen Vector, because it is the plane normal vector.*/
   marker.id = marker_id++;
@@ -410,7 +412,7 @@ void OctomapSegmentation::pushEigenMarker(pcl::PCA<PCLPoint> &pca,
   // text "plane"
   marker.id = marker_id++;
   marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
-  marker.pose.position = convert_eigen_to_geomsg(center_position + axis_z * 0.3f + axis_x * 0.2f);
+  marker.pose.position = convert_eigen_to_geomsg(center_position + axis_3rd * 0.3f + axis_1st * 0.2f);
   marker.scale.z = 0.2;
   marker.color.b = 0.9;
   marker.color.g = 0.9;
@@ -439,10 +441,10 @@ void OctomapSegmentation::pushEigenMarker(pcl::PCA<PCLPoint> &pca,
   Eigen::Vector3f point_ur, point_ul, point_br, point_bl; // upper right, upper left, bottom right, bottom left
   Eigen::Vector3f point_um, point_bm, point_rm, point_lm;
 
-  point_um = center_position + axis_x * eigen_values.x() * 0.001;
-  point_bm = center_position - axis_x * eigen_values.x() * 0.001;
-  point_rm = center_position + axis_y * eigen_values.y() * 0.001;
-  point_lm = center_position - axis_y * eigen_values.y() * 0.001;
+  point_um = center_position + axis_1st * eigen_values.x() * 0.001;
+  point_bm = center_position - axis_1st * eigen_values.x() * 0.001;
+  point_rm = center_position + axis_2nd * eigen_values.y() * 0.001;
+  point_lm = center_position - axis_2nd * eigen_values.y() * 0.001;
 
   marker.points.push_back(convert_eigen_to_geomsg(point_um));
   marker.points.push_back(convert_eigen_to_geomsg(point_bm));
@@ -450,6 +452,29 @@ void OctomapSegmentation::pushEigenMarker(pcl::PCA<PCLPoint> &pca,
   // marker.points.push_back(convert_eigen_to_geomsg(point_lm));
 
   marker_array.markers.push_back(marker);
+  */
+
+  /*
+  visualization_msgs::Marker wall_plane_marker;
+  wall_plane_marker.header.frame_id = "/map";
+  wall_plane_marker.ns = "cluster_eigen";
+  wall_plane_marker.type = visualization_msgs::Marker::CUBE;
+  wall_plane_marker.id = marker_id++;
+  wall_plane_marker.pose.position.x = center_position.x();
+  wall_plane_marker.pose.position.y = center_position.y();
+  wall_plane_marker.pose.position.z = center_position.z();
+  wall_plane_marker.pose.orientation.x = qz.x();
+  wall_plane_marker.pose.orientation.y = qz.y();
+  wall_plane_marker.pose.orientation.z = qz.z();
+  wall_plane_marker.pose.orientation.w = qz.w();
+  wall_plane_marker.scale.x = 0.001f;
+  wall_plane_marker.scale.y = eigen_values.y() * 0.005; // plane width
+  wall_plane_marker.scale.z = eigen_values.x() * 0.005; // plane height, the largest component in 3 eigen values
+  wall_plane_marker.color.r = 1.0;
+  wall_plane_marker.color.g = 0.7;
+  wall_plane_marker.color.b = 0.7;
+  wall_plane_marker.color.a = 1.0;
+  marker_array.markers.push_back(wall_plane_marker);
   */
 }
 
@@ -495,4 +520,121 @@ geometry_msgs::Point OctomapSegmentation::convert_eigen_to_geomsg(const Eigen::V
   result.y = input_vector.y();
   result.z = input_vector.z();
   return result;
+}
+
+void OctomapSegmentation::computeOBB(const pcl::PointCloud<PCLPoint>::Ptr &input_cloud, pcl::PCA<PCLPoint> &input_pca, Eigen::Vector3f &min_point, Eigen::Vector3f &max_point, Eigen::Vector3f &OBB_center, Eigen::Matrix3f &obb_rotational_matrix)
+{
+  min_point.x() = std::numeric_limits<float>::max();
+  min_point.y() = std::numeric_limits<float>::max();
+  min_point.z() = std::numeric_limits<float>::max();
+
+  max_point.x() = std::numeric_limits<float>::min();
+  max_point.y() = std::numeric_limits<float>::min();
+  max_point.z() = std::numeric_limits<float>::min();
+
+  Eigen::Vector3f center_position;
+  center_position << input_pca.getMean().coeff(0), input_pca.getMean().coeff(1), input_pca.getMean().coeff(2);
+
+  Eigen::Matrix3f eigen_vec = input_pca.getEigenVectors();
+  Eigen::Vector3f axis_1st(eigen_vec.coeff(0, 0), eigen_vec.coeff(1, 0), eigen_vec.coeff(2, 0));
+  Eigen::Vector3f axis_2nd(eigen_vec.coeff(0, 1), eigen_vec.coeff(1, 1), eigen_vec.coeff(2, 1));
+  Eigen::Vector3f axis_3rd(eigen_vec.coeff(0, 2), eigen_vec.coeff(1, 2), eigen_vec.coeff(2, 2));
+
+  unsigned int number_of_points = static_cast<unsigned int>(input_cloud->size());
+  for (unsigned int i = 0; i < number_of_points; i++)
+  {
+    float x = (input_cloud->at(i).x - center_position.x()) * axis_1st.x() + (input_cloud->at(i).y - center_position.y()) * axis_1st.y() + (input_cloud->at(i).z - center_position.z()) * axis_1st.z();
+    float y = (input_cloud->at(i).x - center_position.x()) * axis_2nd.x() + (input_cloud->at(i).y - center_position.y()) * axis_2nd.y() + (input_cloud->at(i).z - center_position.z()) * axis_2nd.z();
+    float z = (input_cloud->at(i).x - center_position.x()) * axis_3rd.x() + (input_cloud->at(i).y - center_position.y()) * axis_3rd.y() + (input_cloud->at(i).z - center_position.z()) * axis_3rd.z();
+
+    // float x = ((*input_)[(*indices_)[i]].x - mean_value_(0)) * major_axis_(0) +
+    //           ((*input_)[(*indices_)[i]].y - mean_value_(1)) * major_axis_(1) +
+    //           ((*input_)[(*indices_)[i]].z - mean_value_(2)) * major_axis_(2);
+    // float y = ((*input_)[(*indices_)[i]].x - mean_value_(0)) * middle_axis_(0) +
+    //           ((*input_)[(*indices_)[i]].y - mean_value_(1)) * middle_axis_(1) +
+    //           ((*input_)[(*indices_)[i]].z - mean_value_(2)) * middle_axis_(2);
+    // float z = ((*input_)[(*indices_)[i]].x - mean_value_(0)) * minor_axis_(0) +
+    //           ((*input_)[(*indices_)[i]].y - mean_value_(1)) * minor_axis_(1) +
+    //           ((*input_)[(*indices_)[i]].z - mean_value_(2)) * minor_axis_(2);
+
+    if (x <= min_point.x())
+      min_point.x() = x;
+    if (y <= min_point.y())
+      min_point.y() = y;
+    if (z <= min_point.z())
+      min_point.z() = z;
+
+    if (x >= max_point.x())
+      max_point.x() = x;
+    if (y >= max_point.y())
+      max_point.y() = y;
+    if (z >= max_point.z())
+      max_point.z() = z;
+  }
+
+  obb_rotational_matrix << axis_1st(0), axis_2nd(0), axis_3rd(0),
+      axis_1st(1), axis_2nd(1), axis_3rd(1),
+      axis_1st(2), axis_2nd(2), axis_3rd(2);
+
+  Eigen::Vector3f shift(
+      (max_point.x() + min_point.x()) / 2.0f,
+      (max_point.y() + min_point.y()) / 2.0f,
+      (max_point.z() + min_point.z()) / 2.0f);
+
+  min_point.x() -= shift(0);
+  min_point.y() -= shift(1);
+  min_point.z() -= shift(2);
+
+  max_point.x() -= shift(0);
+  max_point.y() -= shift(1);
+  max_point.z() -= shift(2);
+
+  OBB_center = center_position + obb_rotational_matrix * shift;
+}
+
+void OctomapSegmentation::add_OBB_marker(const Eigen::Vector3f &min_obb, const Eigen::Vector3f &max_obb, const Eigen::Vector3f &center_obb, const Eigen::Matrix3f &rot_obb, int &marker_id, visualization_msgs::MarkerArray &marker_array, const std::string &frame_id)
+{
+  visualization_msgs::Marker wall_plane_marker;
+  wall_plane_marker.header.frame_id = frame_id;
+  wall_plane_marker.ns = "plane_bounding_box";
+  wall_plane_marker.type = visualization_msgs::Marker::CUBE;
+  wall_plane_marker.id = marker_id++;
+  wall_plane_marker.pose.position.x = center_obb.x();
+  wall_plane_marker.pose.position.y = center_obb.y();
+  wall_plane_marker.pose.position.z = center_obb.z();
+  Eigen::Quaternionf quat(rot_obb);
+  quat.normalize();
+  wall_plane_marker.pose.orientation.x = quat.x();
+  wall_plane_marker.pose.orientation.y = quat.y();
+  wall_plane_marker.pose.orientation.z = quat.z();
+  wall_plane_marker.pose.orientation.w = quat.w();
+  // according to the normal vector, there are 8 cases:
+  Eigen::Vector3f normal_vec;
+  normal_vec << rot_obb(0,2), rot_obb(1,2), rot_obb(2,2);
+  /*
+  if ((normal_vec.x() > 0.0 && normal_vec.y() > 0.0 && normal_vec.z() > 0.0) || (normal_vec.x() < 0.0 && normal_vec.y() < 0.0 && normal_vec.z() < 0.0))
+  {
+    float size_x = abs(max_obb.x() - min_obb.x());
+    float size_y = abs(max_obb.y() - min_obb.y());
+    wall_plane_marker.scale.x = size_x;
+    wall_plane_marker.scale.y = size_y;
+  }
+  else if ((normal_vec.x() > 0.0 && normal_vec.y() > 0.0 && normal_vec.z() < 0.0) || (normal_vec.x() < 0.0 && normal_vec.y() < 0.0 && normal_vec.z() > 0.0))
+  {
+    float size_x = abs(max_obb.x() - min_obb.x());
+    float size_y = abs(max_obb.y() - min_obb.y());
+    wall_plane_marker.scale.x = size_x;
+    wall_plane_marker.scale.y = size_y;
+  }
+  */
+  float size_x = abs(max_obb.x() - min_obb.x());
+  float size_y = abs(max_obb.y() - min_obb.y());
+  wall_plane_marker.scale.x = size_x;
+  wall_plane_marker.scale.y = 0.3f;
+  wall_plane_marker.scale.z = 0.001f;
+  wall_plane_marker.color.r = 1.0;
+  wall_plane_marker.color.g = 0.7;
+  wall_plane_marker.color.b = 0.7;
+  wall_plane_marker.color.a = 1.0;
+  marker_array.markers.push_back(wall_plane_marker);
 }

@@ -66,13 +66,17 @@ public:
   static bool CustomCondition(const pcl::PointXYZRGBNormal &seedPoint, const pcl::PointXYZRGBNormal &candidatePoint, float squaredDistance);
   bool PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &input_clusters, visualization_msgs::MarkerArray &marker_array, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &cubic_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &plane_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &sylinder_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &the_others);
   bool ransac_wall_detection(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &input_clusters);
-  void pushEigenMarker(pcl::PCA<PCLPoint> &pca, int &marker_id, visualization_msgs::MarkerArray &marker_array, double scale, const std::string &frame_id);
+  void add_wall_marker(pcl::PCA<PCLPoint> &pca, int &marker_id, visualization_msgs::MarkerArray &marker_array, const std::string &frame_id);
   /* floor_removal() */
   bool isSpeckleNode(const OcTreeKey &nKey, octomap_server::OctomapServer::OcTreeT *&target_octomap);
 
 private:
-  bool tsuru_ = true;
+  std::string frame_id_;
+  int id_;
+  // visualization_msgs::MarkerArray marker_array_;
   geometry_msgs::Point convert_eigen_to_geomsg(const Eigen::Vector3f input_vector);
+  void computeOBB(const pcl::PointCloud<PCLPoint>::Ptr &input_cloud, pcl::PCA<PCLPoint> &input_pca, Eigen::Vector3f &min_point, Eigen::Vector3f &max_point, Eigen::Vector3f &OBB_center, Eigen::Matrix3f &obb_rotational_matrix);
+  void add_OBB_marker(const Eigen::Vector3f &min_obb, const Eigen::Vector3f &max_obb, const Eigen::Vector3f &center_obb, const Eigen::Matrix3f &rot_obb, int &marker_id, visualization_msgs::MarkerArray &marker_array, const std::string &frame_id);
   // ros::NodeHandle nh_;
   // ros::Publisher pub_segmented_pc_;
   // ros::Publisher pub_normal_vector_markers_;
