@@ -29,6 +29,7 @@
 #include <pcl/filters/passthrough.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/common/pca.h>
+#include <pcl/surface/convex_hull.h>>
 
 #include <tf/transform_listener.h>
 #include <tf/message_filter.h>
@@ -77,6 +78,7 @@ private:
   geometry_msgs::Point convert_eigen_to_geomsg(const Eigen::Vector3f input_vector);
   void computeOBB(const pcl::PointCloud<PCLPoint>::Ptr &input_cloud, pcl::PCA<PCLPoint> &input_pca, Eigen::Vector3f &min_point, Eigen::Vector3f &max_point, Eigen::Vector3f &OBB_center, Eigen::Matrix3f &obb_rotational_matrix);
   void add_OBB_marker(const Eigen::Vector3f &min_obb, const Eigen::Vector3f &max_obb, const Eigen::Vector3f &center_obb, const Eigen::Matrix3f &rot_obb, int &marker_id, visualization_msgs::MarkerArray &marker_array, const std::string &frame_id);
+  void add_line_marker(const pcl::PointCloud<PCLPoint>::Ptr &input_vertices, int &marker_id, visualization_msgs::MarkerArray &marker_array, std::string frame_id);
   // ros::NodeHandle nh_;
   // ros::Publisher pub_segmented_pc_;
   // ros::Publisher pub_normal_vector_markers_;

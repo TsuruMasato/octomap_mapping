@@ -329,14 +329,19 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
     float norm_x = pca.getEigenValues().x();
     float norm_y = pca.getEigenValues().y();
     float norm_z = pca.getEigenValues().z();
-    ROS_ERROR("norm_x : %.2f, norm_y : %.2f, norm_z : %.2f", norm_x, norm_y, norm_z);
+    // ROS_ERROR("norm_x : %.2f, norm_y : %.2f, norm_z : %.2f", norm_x, norm_y, norm_z);
 
     bool is_meaningful_x = norm_x > 3.0f;
     bool is_meaningful_y = norm_y > 3.0f;
     bool is_meaningful_z = norm_z > 3.0f;
     int8_t num_meaningful_axis = is_meaningful_x + is_meaningful_y + is_meaningful_z;
-    Eigen::Vector3f min_obb, max_obb, center_obb;
-    Eigen::Matrix3f rot_obb;
+
+    // Eigen::Vector3f min_obb, max_obb, center_obb;
+    // Eigen::Matrix3f rot_obb;
+    pcl::PointCloud<PCLPoint>::Ptr cloud_hull(new pcl::PointCloud<PCLPoint>);
+    pcl::ConvexHull<PCLPoint> chull;
+    pcl::PCDWriter writer;
+
     /* if there are two meaningful norms, this cluster is a plane */
     switch (num_meaningful_axis)
     {
@@ -346,9 +351,13 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
 
     case 2:
       plane_clusters.push_back(target_ptr);
+      chull.setInputCloud(target_ptr);
+      chull.setDimension(3);
+      chull.reconstruct(*cloud_hull);
       add_wall_marker(pca, marker_id, marker_array, "map");
-      computeOBB(target_ptr, pca, min_obb, max_obb, center_obb, rot_obb);
-      add_OBB_marker(min_obb, max_obb, center_obb, rot_obb, marker_id, marker_array, "map");
+      // computeOBB(target_ptr, pca, min_obb, max_obb, center_obb, rot_obb);
+      // add_OBB_marker(min_obb, max_obb, center_obb, rot_obb, marker_id, marker_array, "map");
+      add_line_marker(cloud_hull, marker_id, marker_array, "map");
       break;
 
     case 1:
@@ -637,4 +646,34 @@ void OctomapSegmentation::add_OBB_marker(const Eigen::Vector3f &min_obb, const E
   wall_plane_marker.color.b = 0.7;
   wall_plane_marker.color.a = 1.0;
   marker_array.markers.push_back(wall_plane_marker);
+}
+
+void OctomapSegmentation::add_line_marker(const pcl::PointCloud<PCLPoint>::Ptr &input_vertices, int &marker_id, visualization_msgs::MarkerArray &marker_array, std::string frame_id)
+{
+  ROS_ERROR("input_vertices.size : %d", input_vertices->size());
+  // int local_id = 0;
+  visualization_msgs::Marker marker;
+  marker.header.frame_id = frame_id;
+  marker.id = marker_id++;
+  marker.ns = "plane_bound";
+  marker.type = visualization_msgs::Marker::LINE_STRIP;
+  marker.scale.x = 0.1;
+  marker.color.r = 0.8;
+  marker.color.g = 1.0;
+  marker.color.b = 0.7;
+  marker.color.a = 1.0;
+  marker.pose.orientation.x = 0.0;
+  marker.pose.orientation.y = 0.0;
+  marker.pose.orientation.z = 0.0;
+  marker.pose.orientation.w = 1.0;
+
+  geometry_msgs::Point p;
+  for (size_t i = 0; i < input_vertices->size(); i++)
+  {
+    p.x = input_vertices->at(i).x;
+    p.y = input_vertices->at(i).y;
+    p.z = input_vertices->at(i).z;
+    marker.points.push_back(p);
+  }
+  marker_array.markers.push_back(marker);
 }
