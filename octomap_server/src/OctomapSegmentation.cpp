@@ -81,11 +81,29 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
     floor_marker.scale.x = 10.0f;
     floor_marker.scale.y = 10.0f;
     floor_marker.scale.z = 0.001f;
-    floor_marker.color.r = 0.8;
+    floor_marker.color.r = 0.2;
     floor_marker.color.g = 1.0;
-    floor_marker.color.b = 0.9;
-    floor_marker.color.a = 1.0;
+    floor_marker.color.b = 0.2;
+    floor_marker.color.a = 0.5;
     marker_array.markers.push_back(floor_marker);
+
+    // text "floor"
+    visualization_msgs::Marker floor_txt;
+    floor_txt.header.frame_id = "map";
+    floor_txt.id = 1;
+    floor_txt.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+    floor_txt.pose.position.x = 0;
+    floor_txt.pose.position.y = 0;
+    floor_txt.pose.position.z = -floor_coefficients.values.at(3) + 0.2f;
+    floor_txt.scale.z = 0.15;
+    floor_txt.color.b = 0.9;
+    floor_txt.color.g = 0.9;
+    floor_txt.color.r = 0.9;
+    floor_txt.color.a = 1.0;
+    char floor_equation[30];
+    sprintf(floor_equation, "%.2fx+%.2fy+%.2fz-%.2f=0", floor_coefficients.values.at(0), floor_coefficients.values.at(1), floor_coefficients.values.at(2), floor_coefficients.values.at(3));
+    floor_txt.text = "Floor\n" + std::string(floor_equation);
+    marker_array.markers.push_back(floor_txt);
   }
 
   // clustering
@@ -320,7 +338,7 @@ void OctomapSegmentation::add_color_and_accumulate(std::vector<pcl::PointCloud<p
 
 bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &input_clusters, visualization_msgs::MarkerArray &marker_array, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &cubic_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &plane_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &sylinder_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &the_others)
 {
-  int marker_id = 1; // id:0 is used for floor
+  int marker_id = 2; // id:0 and 1 is used for floor
   for (size_t i = 0; i < input_clusters.size(); i++)
   {
     auto target_ptr = input_clusters.at(i);
@@ -653,7 +671,7 @@ void OctomapSegmentation::add_line_marker(const pcl::PointCloud<PCLPoint>::Ptr &
   marker.id = marker_id++;
   marker.ns = "plane_bound";
   marker.type = visualization_msgs::Marker::LINE_STRIP;
-  marker.scale.x = 0.01;
+  marker.scale.x = 0.005;
   marker.color.r = 0.0f;
   marker.color.g = 1.0f;
   marker.color.b = 0.0f;
