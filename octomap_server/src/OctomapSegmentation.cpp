@@ -339,8 +339,8 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
     // Eigen::Vector3f min_obb, max_obb, center_obb;
     // Eigen::Matrix3f rot_obb;
     pcl::PointCloud<PCLPoint>::Ptr cloud_hull(new pcl::PointCloud<PCLPoint>);
+    std::vector<pcl::Vertices> cloud_vertices;
     pcl::ConvexHull<PCLPoint> chull;
-    pcl::PCDWriter writer;
 
     /* if there are two meaningful norms, this cluster is a plane */
     switch (num_meaningful_axis)
@@ -353,11 +353,9 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
       plane_clusters.push_back(target_ptr);
       chull.setInputCloud(target_ptr);
       chull.setDimension(3);
-      chull.reconstruct(*cloud_hull);
+      chull.reconstruct(*cloud_hull, cloud_vertices);
       add_wall_marker(pca, marker_id, marker_array, "map");
-      // computeOBB(target_ptr, pca, min_obb, max_obb, center_obb, rot_obb);
-      // add_OBB_marker(min_obb, max_obb, center_obb, rot_obb, marker_id, marker_array, "map");
-      add_line_marker(cloud_hull, marker_id, marker_array, "map");
+      add_line_marker(cloud_hull, cloud_vertices, marker_id, marker_array, "map");
       break;
 
     case 1:
@@ -648,32 +646,44 @@ void OctomapSegmentation::add_OBB_marker(const Eigen::Vector3f &min_obb, const E
   marker_array.markers.push_back(wall_plane_marker);
 }
 
-void OctomapSegmentation::add_line_marker(const pcl::PointCloud<PCLPoint>::Ptr &input_vertices, int &marker_id, visualization_msgs::MarkerArray &marker_array, std::string frame_id)
+void OctomapSegmentation::add_line_marker(const pcl::PointCloud<PCLPoint>::Ptr &input_vertices, const std::vector<pcl::Vertices> &input_surface, int &marker_id, visualization_msgs::MarkerArray &marker_array, std::string frame_id)
 {
-  ROS_ERROR("input_vertices.size : %d", input_vertices->size());
-  // int local_id = 0;
   visualization_msgs::Marker marker;
   marker.header.frame_id = frame_id;
   marker.id = marker_id++;
   marker.ns = "plane_bound";
   marker.type = visualization_msgs::Marker::LINE_STRIP;
-  marker.scale.x = 0.1;
-  marker.color.r = 0.8;
-  marker.color.g = 1.0;
-  marker.color.b = 0.7;
-  marker.color.a = 1.0;
-  marker.pose.orientation.x = 0.0;
-  marker.pose.orientation.y = 0.0;
-  marker.pose.orientation.z = 0.0;
+  marker.scale.x = 0.01;
+  marker.color.r = 0.0f;
+  marker.color.g = 1.0f;
+  marker.color.b = 0.0f;
+  marker.color.a = 0.8f;
   marker.pose.orientation.w = 1.0;
 
-  geometry_msgs::Point p;
-  for (size_t i = 0; i < input_vertices->size(); i++)
+  geometry_msgs::Point vertix_0, vertix_1, vertix_2;
+  for (size_t i = 0; i < input_surface.size(); i++)
   {
-    p.x = input_vertices->at(i).x;
-    p.y = input_vertices->at(i).y;
-    p.z = input_vertices->at(i).z;
-    marker.points.push_back(p);
+    auto index_0 = input_surface.at(i).vertices.at(0);
+    auto index_1 = input_surface.at(i).vertices.at(1);
+    auto index_2 = input_surface.at(i).vertices.at(2);
+
+    vertix_0.x = input_vertices->at(index_0).x;
+    vertix_0.y = input_vertices->at(index_0).y;
+    vertix_0.z = input_vertices->at(index_0).z;
+
+    vertix_1.x = input_vertices->at(index_1).x;
+    vertix_1.y = input_vertices->at(index_1).y;
+    vertix_1.z = input_vertices->at(index_1).z;
+
+    vertix_2.x = input_vertices->at(index_2).x;
+    vertix_2.y = input_vertices->at(index_2).y;
+    vertix_2.z = input_vertices->at(index_2).z;
+
+    marker.points.push_back(vertix_0);
+    marker.points.push_back(vertix_1);
+    marker.points.push_back(vertix_2);
   }
+
   marker_array.markers.push_back(marker);
+
 }
