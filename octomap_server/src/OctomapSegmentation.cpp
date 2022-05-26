@@ -81,15 +81,16 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
     floor_marker.scale.x = 10.0f;
     floor_marker.scale.y = 10.0f;
     floor_marker.scale.z = 0.001f;
-    floor_marker.color.r = 0.2;
-    floor_marker.color.g = 1.0;
-    floor_marker.color.b = 0.2;
+    floor_marker.color.r = 0.5;
+    floor_marker.color.g = 0.9;
+    floor_marker.color.b = 0.9;
     floor_marker.color.a = 0.5;
     marker_array.markers.push_back(floor_marker);
 
     // text "floor"
     visualization_msgs::Marker floor_txt;
     floor_txt.header.frame_id = "map";
+    floor_txt.ns = "floor_plane";
     floor_txt.id = 1;
     floor_txt.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
     floor_txt.pose.position.x = 0;
@@ -372,8 +373,18 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
       chull.setInputCloud(target_ptr);
       chull.setDimension(3);
       chull.reconstruct(*cloud_hull, cloud_vertices);
-      add_wall_marker(pca, marker_id, marker_array, "map");
-      add_line_marker(cloud_hull, cloud_vertices, marker_id, marker_array, "map");
+      if (abs(pca.getEigenVectors().coeff(2,2)) < 0.5f) // wall
+      {
+        add_wall_marker(pca, marker_id, marker_array, "map");
+        std::vector<uint8_t> color{0, 255, 0};
+        add_line_marker(cloud_hull, cloud_vertices, color, marker_id, marker_array, "map");
+      }
+      else  // floor,stair,step
+      {
+        add_floor_marker(pca, marker_id, marker_array, "map");
+        std::vector<uint8_t> color{255, 20, 20};
+        add_line_marker(cloud_hull, cloud_vertices, color, marker_id, marker_array, "map");
+      }
       break;
 
     case 1:
@@ -418,8 +429,8 @@ void OctomapSegmentation::add_wall_marker(pcl::PCA<PCLPoint> &pca,
   Eigen::Vector3f axis_1st(eigen_vec.coeff(0, 0), eigen_vec.coeff(1, 0), eigen_vec.coeff(2, 0));
   Eigen::Vector3f axis_2nd(eigen_vec.coeff(0, 1), eigen_vec.coeff(1, 1), eigen_vec.coeff(2, 1));
   Eigen::Vector3f axis_3rd(eigen_vec.coeff(0, 2), eigen_vec.coeff(1, 2), eigen_vec.coeff(2, 2));
-  qx.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_1st);
-  qy.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_2nd);
+  // qx.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_1st);
+  // qy.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_2nd);
   qz.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_3rd);
 
   /* visualize arrow only with the 3rd Eigen Vector, because it is the plane normal vector.*/
@@ -434,16 +445,19 @@ void OctomapSegmentation::add_wall_marker(pcl::PCA<PCLPoint> &pca,
   marker.color.a = 1.0;
   marker_array.markers.push_back(marker);
 
-  // text "plane"
+  // text
   marker.id = marker_id++;
   marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
   marker.pose.position = convert_eigen_to_geomsg(center_position + axis_3rd * 0.3f + axis_1st * 0.2f);
-  marker.scale.z = 0.2;
+  marker.scale.z = 0.13;
   marker.color.b = 0.9;
   marker.color.g = 0.9;
   marker.color.r = 0.9;
   marker.color.a = 1.0;
-  marker.text = "Normal";
+  char plane_equation[30];
+  sprintf(plane_equation, "(%.2f,%.2f,%.2f)", axis_3rd.x(), axis_3rd.y(), axis_3rd.z());
+  marker.text = "Wall\n" + std::string(plane_equation);
+  
   marker_array.markers.push_back(marker);
 
   // visualize plane vertices
@@ -479,10 +493,10 @@ void OctomapSegmentation::add_wall_marker(pcl::PCA<PCLPoint> &pca,
   marker_array.markers.push_back(marker);
   */
 
-  /*
+  
   visualization_msgs::Marker wall_plane_marker;
   wall_plane_marker.header.frame_id = "/map";
-  wall_plane_marker.ns = "cluster_eigen";
+  wall_plane_marker.ns = "wall_plane";
   wall_plane_marker.type = visualization_msgs::Marker::CUBE;
   wall_plane_marker.id = marker_id++;
   wall_plane_marker.pose.position.x = center_position.x();
@@ -493,14 +507,126 @@ void OctomapSegmentation::add_wall_marker(pcl::PCA<PCLPoint> &pca,
   wall_plane_marker.pose.orientation.z = qz.z();
   wall_plane_marker.pose.orientation.w = qz.w();
   wall_plane_marker.scale.x = 0.001f;
-  wall_plane_marker.scale.y = eigen_values.y() * 0.005; // plane width
-  wall_plane_marker.scale.z = eigen_values.x() * 0.005; // plane height, the largest component in 3 eigen values
+  wall_plane_marker.scale.y = eigen_values.y() * 0.01; // plane width
+  wall_plane_marker.scale.z = eigen_values.x() * 0.01; // plane height, the largest component in 3 eigen values
   wall_plane_marker.color.r = 1.0;
   wall_plane_marker.color.g = 0.7;
   wall_plane_marker.color.b = 0.7;
   wall_plane_marker.color.a = 1.0;
   marker_array.markers.push_back(wall_plane_marker);
+  
+}
+
+void OctomapSegmentation::add_floor_marker(pcl::PCA<PCLPoint> &pca,
+                                          int &marker_id,
+                                          visualization_msgs::MarkerArray &marker_array,
+                                          const std::string &frame_id)
+{
+  visualization_msgs::Marker marker;
+  marker.lifetime = ros::Duration(3.0);
+  marker.header.frame_id = frame_id;
+  marker.ns = "normal_vectors";
+  marker.type = visualization_msgs::Marker::ARROW;
+  marker.scale.x = 0.4;  // length:40cm
+  marker.scale.y = 0.04; // width of the allow
+  marker.scale.z = 0.04; // width of the allow
+
+  Eigen::Vector3f center_position;
+  center_position << pca.getMean().coeff(0), pca.getMean().coeff(1), pca.getMean().coeff(2);
+  marker.pose.position.x = center_position.x();
+  marker.pose.position.y = center_position.y();
+  marker.pose.position.z = center_position.z();
+
+  Eigen::Quaternionf qx, qy, qz;
+  Eigen::Matrix3f eigen_vec = pca.getEigenVectors();
+  Eigen::Vector3f eigen_values = pca.getEigenValues();
+  Eigen::Vector3f axis_1st(eigen_vec.coeff(0, 0), eigen_vec.coeff(1, 0), eigen_vec.coeff(2, 0));
+  Eigen::Vector3f axis_2nd(eigen_vec.coeff(0, 1), eigen_vec.coeff(1, 1), eigen_vec.coeff(2, 1));
+  Eigen::Vector3f axis_3rd(eigen_vec.coeff(0, 2), eigen_vec.coeff(1, 2), eigen_vec.coeff(2, 2));
+  // qx.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_1st);
+  // qy.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_2nd);
+  qz.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_3rd);
+
+  /* visualize arrow only with the 3rd Eigen Vector, because it is the plane normal vector.*/
+  marker.id = marker_id++;
+  marker.pose.orientation.x = qz.x();
+  marker.pose.orientation.y = qz.y();
+  marker.pose.orientation.z = qz.z();
+  marker.pose.orientation.w = qz.w();
+  marker.color.r = 0.4;
+  marker.color.g = 0.8;
+  marker.color.b = 1.0;
+  marker.color.a = 1.0;
+  marker_array.markers.push_back(marker);
+
+  // text
+  marker.id = marker_id++;
+  marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+  marker.pose.position = convert_eigen_to_geomsg(center_position + axis_3rd * 0.3f + axis_1st * 0.2f);
+  marker.scale.z = 0.13;
+  marker.color.b = 0.9;
+  marker.color.g = 0.9;
+  marker.color.r = 0.9;
+  marker.color.a = 1.0;
+  char plane_equation[30];
+  sprintf(plane_equation, "(%.2f,%.2f,%.2f)", axis_3rd.x(), axis_3rd.y(), axis_3rd.z());
+  marker.text = "Horizontal\n" + std::string(plane_equation);
+
+  marker_array.markers.push_back(marker);
+
+  // visualize plane vertices
+  /*ゴミコード
+  marker.id = marker_id++;
+  marker.type = visualization_msgs::Marker::TRIANGLE_LIST;
+  marker.pose.orientation.x = qz.x();
+  marker.pose.orientation.y = qz.y();
+  marker.pose.orientation.z = qz.z();
+  marker.pose.orientation.w = qz.w();
+  marker.scale.x = 1.0;
+  marker.scale.y = 1.0;
+  marker.scale.z = 1.0;
+  marker.color.r = 1.0;
+  marker.color.g = 0.0;
+  marker.color.b = 0.0;
+  marker.color.a = 1.0;
+
+  // calc 4 vertices
+  Eigen::Vector3f point_ur, point_ul, point_br, point_bl; // upper right, upper left, bottom right, bottom left
+  Eigen::Vector3f point_um, point_bm, point_rm, point_lm;
+
+  point_um = center_position + axis_1st * eigen_values.x() * 0.001;
+  point_bm = center_position - axis_1st * eigen_values.x() * 0.001;
+  point_rm = center_position + axis_2nd * eigen_values.y() * 0.001;
+  point_lm = center_position - axis_2nd * eigen_values.y() * 0.001;
+
+  marker.points.push_back(convert_eigen_to_geomsg(point_um));
+  marker.points.push_back(convert_eigen_to_geomsg(point_bm));
+  marker.points.push_back(convert_eigen_to_geomsg(point_rm));
+  // marker.points.push_back(convert_eigen_to_geomsg(point_lm));
+
+  marker_array.markers.push_back(marker);
   */
+
+  visualization_msgs::Marker wall_plane_marker;
+  wall_plane_marker.header.frame_id = "/map";
+  wall_plane_marker.ns = "wall_plane";
+  wall_plane_marker.type = visualization_msgs::Marker::CUBE;
+  wall_plane_marker.id = marker_id++;
+  wall_plane_marker.pose.position.x = center_position.x();
+  wall_plane_marker.pose.position.y = center_position.y();
+  wall_plane_marker.pose.position.z = center_position.z();
+  wall_plane_marker.pose.orientation.x = qz.x();
+  wall_plane_marker.pose.orientation.y = qz.y();
+  wall_plane_marker.pose.orientation.z = qz.z();
+  wall_plane_marker.pose.orientation.w = qz.w();
+  wall_plane_marker.scale.x = 0.001f;
+  wall_plane_marker.scale.y = eigen_values.y() * 0.01; // plane width
+  wall_plane_marker.scale.z = eigen_values.x() * 0.01; // plane height, the largest component in 3 eigen values
+  wall_plane_marker.color.r = 1.0;
+  wall_plane_marker.color.g = 0.7;
+  wall_plane_marker.color.b = 0.7;
+  wall_plane_marker.color.a = 1.0;
+  marker_array.markers.push_back(wall_plane_marker);
 }
 
 bool OctomapSegmentation::ransac_wall_detection(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &input_clusters)
@@ -664,7 +790,7 @@ void OctomapSegmentation::add_OBB_marker(const Eigen::Vector3f &min_obb, const E
   marker_array.markers.push_back(wall_plane_marker);
 }
 
-void OctomapSegmentation::add_line_marker(const pcl::PointCloud<PCLPoint>::Ptr &input_vertices, const std::vector<pcl::Vertices> &input_surface, int &marker_id, visualization_msgs::MarkerArray &marker_array, std::string frame_id)
+void OctomapSegmentation::add_line_marker(const pcl::PointCloud<PCLPoint>::Ptr &input_vertices, const std::vector<pcl::Vertices> &input_surface, const std::vector<uint8_t> &rgb, int &marker_id, visualization_msgs::MarkerArray &marker_array, std::string frame_id)
 {
   visualization_msgs::Marker marker;
   marker.header.frame_id = frame_id;
@@ -672,9 +798,9 @@ void OctomapSegmentation::add_line_marker(const pcl::PointCloud<PCLPoint>::Ptr &
   marker.ns = "plane_bound";
   marker.type = visualization_msgs::Marker::LINE_STRIP;
   marker.scale.x = 0.005;
-  marker.color.r = 0.0f;
-  marker.color.g = 1.0f;
-  marker.color.b = 0.0f;
+  marker.color.r = rgb[0] / 255.0f;
+  marker.color.g = rgb[1] / 255.0f;
+  marker.color.b = rgb[2] / 255.0f;
   marker.color.a = 0.8f;
   marker.pose.orientation.w = 1.0;
 
