@@ -26,7 +26,8 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
     if (target_octomap->isNodeOccupied(*it))
     {  
       // Ignore speckles in the map:
-      if ((it.getDepth() >= target_octomap->getTreeDepth()) && isSpeckleNode(it.getKey(), target_octomap))
+      bool isSpeckleFilterEnable = false;
+      if (isSpeckleFilterEnable && (it.getDepth() >= target_octomap->getTreeDepth()) && isSpeckleNode(it.getKey(), target_octomap))
       {
         target_octomap->deleteNode(it.getKey(), target_octomap->getTreeDepth());
         // ROS_ERROR("Ignoring single speckle at (%f,%f,%f)", x, y, z);
@@ -49,6 +50,11 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
       pcl_cloud->push_back(point);
     }
   }
+
+  /* for sure. it works on May.27th. The number of voxels and PCL point cloud are exacly same. */
+  // pcl::PointCloud<pcl::PointXYZRGB> debug_pointcloud;
+  // pcl::copyPointCloud(*pcl_cloud, debug_pointcloud);
+  // return debug_pointcloud; // for debug
 
   /* ******************************** */
   /* segmentation in PointCloud style */
@@ -109,22 +115,21 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
 
   // clustering
   std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> clusters;
-  bool clustering_success = clustering(obstacle_cloud, clusters);
-  
+  bool clustering_success = clustering(obstacle_cloud, clusters); // obstacle cloud becomes smaller...
+
   // primitive clustering
   // marker_array.markers.clear();
   // TODO: multi-thread process.
   std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> cubic_clusters, plane_clusters, sylinder_clusters, the_others;
   PCA_classify(clusters, marker_array, cubic_clusters, plane_clusters, sylinder_clusters, the_others);
 
-  // RANSAC wall detection
-  // ransac_wall_detection(plane_clusters);
 
   /* update Octomap according to the PCL segmentation results */
 
+
   /* merge the all cluster types with changing colors*/
   pcl::copyPointCloud(*obstacle_cloud, *result_cloud);
-  add_color_and_accumulate(floor_cloud, result_cloud, /*rgb*/ 191, 255, 128);
+  // add_color_and_accumulate(floor_cloud, result_cloud, /*rgb*/ 191, 255, 128);
   // add_color_and_accumulate(cubic_clusters, result_cloud, /*rgb*/ 255, 128, 191);
   // add_color_and_accumulate(plane_clusters, result_cloud, /*rgb*/ 255, 191, 128);
   // add_color_and_accumulate(sylinder_clusters, result_cloud, /*rgb*/ 150, 245, 252);
@@ -236,7 +241,7 @@ bool OctomapSegmentation::clustering(const pcl::PointCloud<pcl::PointXYZRGBNorma
   float cluster_tolerance = 0.12;
   cec.setClusterTolerance(cluster_tolerance);
   /*各クラスタのメンバの最小数を設定*/
-  int min_cluster_size = 30;
+  int min_cluster_size = 20;  // it was 30 for long time
   cec.setMinClusterSize(min_cluster_size);
   /*各クラスタのメンバの最大数を設定*/
   cec.setMaxClusterSize(input_cloud->points.size());
@@ -350,6 +355,7 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
     float norm_z = pca.getEigenValues().z();
     // ROS_ERROR("norm_x : %.2f, norm_y : %.2f, norm_z : %.2f", norm_x, norm_y, norm_z);
 
+    // TODO : think better threshold
     bool is_meaningful_x = norm_x > 3.0f;
     bool is_meaningful_y = norm_y > 3.0f;
     bool is_meaningful_z = norm_z > 3.0f;
@@ -389,6 +395,17 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
 
     case 1:
       sylinder_clusters.push_back(target_ptr);
+      /*
+      // generate convex-hull.
+      chull.setInputCloud(target_ptr);
+      chull.setDimension(3);
+      chull.reconstruct(*cloud_hull, cloud_vertices);
+      add_cylinder_marker(pca, marker_id, marker_array, "map");
+      {
+        std::vector<uint8_t> color{30, 150, 255};
+        add_line_marker(cloud_hull, cloud_vertices, color, marker_id, marker_array, "map");
+      }
+      */
       break;
 
     case 0:
@@ -398,7 +415,7 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
     default:
       ROS_ERROR("[OctomapSegmentation] failed in switch. num_meaningful_axis : %d", num_meaningful_axis);
       break;
-    }    
+    } 
   }
   return true;
 }
@@ -627,6 +644,61 @@ void OctomapSegmentation::add_floor_marker(pcl::PCA<PCLPoint> &pca,
   wall_plane_marker.color.b = 0.7;
   wall_plane_marker.color.a = 1.0;
   marker_array.markers.push_back(wall_plane_marker);
+}
+
+void OctomapSegmentation::add_cylinder_marker(pcl::PCA<PCLPoint> &pca, int &marker_id, visualization_msgs::MarkerArray &marker_array, const std::string &frame_id)
+{
+  visualization_msgs::Marker marker;
+  marker.lifetime = ros::Duration(3.0);
+  marker.header.frame_id = frame_id;
+  marker.ns = "normal_vectors";
+  marker.type = visualization_msgs::Marker::CYLINDER;
+  marker.scale.x = 0.4;  // length:40cm
+  marker.scale.y = 0.04; // width of the allow
+  marker.scale.z = 0.04; // width of the allow
+
+  Eigen::Vector3f center_position;
+  center_position << pca.getMean().coeff(0), pca.getMean().coeff(1), pca.getMean().coeff(2);
+  marker.pose.position.x = center_position.x();
+  marker.pose.position.y = center_position.y();
+  marker.pose.position.z = center_position.z();
+
+  Eigen::Quaternionf qx, qy, qz;
+  Eigen::Matrix3f eigen_vec = pca.getEigenVectors();
+  Eigen::Vector3f eigen_values = pca.getEigenValues();
+  Eigen::Vector3f axis_1st(eigen_vec.coeff(0, 0), eigen_vec.coeff(1, 0), eigen_vec.coeff(2, 0));
+  Eigen::Vector3f axis_2nd(eigen_vec.coeff(0, 1), eigen_vec.coeff(1, 1), eigen_vec.coeff(2, 1));
+  Eigen::Vector3f axis_3rd(eigen_vec.coeff(0, 2), eigen_vec.coeff(1, 2), eigen_vec.coeff(2, 2));
+  // qx.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_1st);
+  // qy.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_2nd);
+  qz.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_3rd);
+
+  /* visualize arrow only with the 3rd Eigen Vector, because it is the plane normal vector.*/
+  marker.id = marker_id++;
+  marker.pose.orientation.x = qz.x();
+  marker.pose.orientation.y = qz.y();
+  marker.pose.orientation.z = qz.z();
+  marker.pose.orientation.w = qz.w();
+  marker.color.b = 0.1;
+  marker.color.g = 0.1;
+  marker.color.r = 1.0;
+  marker.color.a = 1.0;
+  marker_array.markers.push_back(marker);
+
+  // text
+  marker.id = marker_id++;
+  marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+  marker.pose.position = convert_eigen_to_geomsg(center_position + axis_3rd * 0.3f + axis_1st * 0.2f);
+  marker.scale.z = 0.13;
+  marker.color.b = 0.9;
+  marker.color.g = 0.9;
+  marker.color.r = 0.9;
+  marker.color.a = 1.0;
+  char plane_equation[30];
+  sprintf(plane_equation, "(%.2f,%.2f,%.2f)", axis_3rd.x(), axis_3rd.y(), axis_3rd.z());
+  marker.text = "Cylinder\n" + std::string(plane_equation);
+
+  marker_array.markers.push_back(marker);  
 }
 
 bool OctomapSegmentation::ransac_wall_detection(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &input_clusters)

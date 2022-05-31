@@ -1202,7 +1202,7 @@ void OctomapServer::publishAll(const ros::Time& rostime){
 #endif
 
         // Ignore speckles in the map:
-        m_filterSpeckles = true; // [Tsuru] 一旦こっちは切る。同様の処理はsegmentationの内部にあり。
+        m_filterSpeckles = false; // [Tsuru] 一旦こっちは切る。同様の処理はsegmentationの内部にあり。
         if (m_filterSpeckles && (it.getDepth() >= m_treeDepth ) && isSpeckleNode(it.getKey())){
           m_octree->deleteNode(it.getKey(), m_maxTreeDepth);
           // ROS_ERROR("Ignoring single speckle at (%f,%f,%f)", x, y, z);
