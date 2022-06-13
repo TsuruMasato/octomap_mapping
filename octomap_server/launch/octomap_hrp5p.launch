@@ -15,6 +15,6 @@ Licensed under the MIT License.
     <param name="publish_free_space" type="bool" value="false"/>
     </node>
 
-  <!-- <node pkg="rviz" type="rviz" name="rviz" args="-d $(find octomap_segmentation)/launch/rviz_octomap_segmentation.rviz"/> -->
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find octomap_server)/launch/rviz_octomap_hrp5p.rviz"/>
 
 </launch>

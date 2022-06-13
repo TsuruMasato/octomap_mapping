@@ -6,9 +6,10 @@ OctomapSegmentation::OctomapSegmentation()
   // pub_normal_vector_markers_ = nh_.advertise<visualization_msgs::MarkerArray>("normal_vectors", 1);
 }
 
-pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServer::OcTreeT* &target_octomap, visualization_msgs::MarkerArray &marker_array)
+pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServer::OcTreeT *&target_octomap, visualization_msgs::MarkerArray &marker_array)
 {
   // ROS_ERROR("OctomapSegmentation::segmentation() start");
+  set_frame_id("choreonoid_origin");
   // init pointcloud:
   pcl::PointCloud<OctomapServer::PCLPoint>::Ptr pcl_cloud(new pcl::PointCloud<OctomapServer::PCLPoint>);
 
@@ -72,7 +73,7 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
   else
   {
     visualization_msgs::Marker floor_marker;
-    floor_marker.header.frame_id = "/map";
+    floor_marker.header.frame_id = frame_id_;
     // floor_marker.lifetime = ros::Duration(1.0);
     floor_marker.ns = "floor_plane";
     floor_marker.type = visualization_msgs::Marker::CUBE;
@@ -95,7 +96,7 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
 
     // text "floor"
     visualization_msgs::Marker floor_txt;
-    floor_txt.header.frame_id = "map";
+    floor_txt.header.frame_id = frame_id_;
     floor_txt.ns = "floor_plane";
     floor_txt.id = 1;
     floor_txt.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
@@ -381,15 +382,15 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
       chull.reconstruct(*cloud_hull, cloud_vertices);
       if (abs(pca.getEigenVectors().coeff(2,2)) < 0.5f) // wall
       {
-        add_wall_marker(pca, marker_id, marker_array, "map");
+        add_wall_marker(pca, marker_id, marker_array, frame_id_);
         std::vector<uint8_t> color{0, 255, 0};
-        add_line_marker(cloud_hull, cloud_vertices, color, marker_id, marker_array, "map");
+        add_line_marker(cloud_hull, cloud_vertices, color, marker_id, marker_array, frame_id_);
       }
       else  // floor,stair,step
       {
-        add_floor_marker(pca, marker_id, marker_array, "map");
+        add_floor_marker(pca, marker_id, marker_array, frame_id_);
         std::vector<uint8_t> color{255, 20, 20};
-        add_line_marker(cloud_hull, cloud_vertices, color, marker_id, marker_array, "map");
+        add_line_marker(cloud_hull, cloud_vertices, color, marker_id, marker_array, frame_id_);
       }
       break;
 
@@ -400,10 +401,10 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
       chull.setInputCloud(target_ptr);
       chull.setDimension(3);
       chull.reconstruct(*cloud_hull, cloud_vertices);
-      add_cylinder_marker(pca, marker_id, marker_array, "map");
+      add_cylinder_marker(pca, marker_id, marker_array, frame_id_);
       {
         std::vector<uint8_t> color{30, 150, 255};
-        add_line_marker(cloud_hull, cloud_vertices, color, marker_id, marker_array, "map");
+        add_line_marker(cloud_hull, cloud_vertices, color, marker_id, marker_array, frame_id_);
       }
       */
       break;
@@ -512,7 +513,7 @@ void OctomapSegmentation::add_wall_marker(pcl::PCA<PCLPoint> &pca,
 
   
   visualization_msgs::Marker wall_plane_marker;
-  wall_plane_marker.header.frame_id = "/map";
+  wall_plane_marker.header.frame_id = frame_id_;
   wall_plane_marker.ns = "wall_plane";
   wall_plane_marker.type = visualization_msgs::Marker::CUBE;
   wall_plane_marker.id = marker_id++;
@@ -625,7 +626,7 @@ void OctomapSegmentation::add_floor_marker(pcl::PCA<PCLPoint> &pca,
   */
 
   visualization_msgs::Marker wall_plane_marker;
-  wall_plane_marker.header.frame_id = "/map";
+  wall_plane_marker.header.frame_id = frame_id_;
   wall_plane_marker.ns = "wall_plane";
   wall_plane_marker.type = visualization_msgs::Marker::CUBE;
   wall_plane_marker.id = marker_id++;

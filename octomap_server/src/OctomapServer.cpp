@@ -866,9 +866,9 @@ void OctomapServer::insertScan(const tf::Point& sensorOriginTf, const PCLPointCl
 
         // #ifdef EXTEND_OCTOMAP_SERVER
         
-        if (it->r == 0 && it->g == 0 && it->b == 0) // RGB is 0, so use normal vector as color info.
+        if (it->r == 0 && it->g == 0 && it->b == 0 && false) // RGB is 0, so use normal vector as color info.
         {
-          ROS_ERROR("[Tsuru] PointCloud is competely black. Camera input cloud might not contain color information.");
+          ROS_ERROR("[Tsuru] PointCloud is completely black. Camera input cloud might not contain color information.");
           if(!m_octree->averageNodeColor(key, /*r=*/abs(it->normal_x) * 100, abs(it->normal_y) * 100, abs(it->normal_z) * 100))
           {
             m_octree->updateNode(key, true);
@@ -983,8 +983,8 @@ void OctomapServer::insertScanWithPrimitives(const tf::Point &sensorOriginTf, co
 
   for(size_t i = 0; i < pc_array.size(); i++)
   {
-    ROS_WARN("Cluster size : %d", pc_array.at(i).size());
-    ROS_WARN("Primitive Type : %d", primitive_array.at(i));
+    ROS_ERROR("Cluster size : %d", pc_array.at(i).size());
+    ROS_ERROR("Primitive Type : %d", primitive_array.at(i));
 
     // Judge free or occupied by RayCasting :
     for (auto it = pc_array.at(i).begin(); it != pc_array.at(i).end(); ++it)
@@ -1014,9 +1014,9 @@ void OctomapServer::insertScanWithPrimitives(const tf::Point &sensorOriginTf, co
 
         // #ifdef EXTEND_OCTOMAP_SERVER
 
-        if (it->r == 0 && it->g == 0 && it->b == 0) // RGB is 0, so use normal vector as color info.
+        if (it->r == 0 && it->g == 0 && it->b == 0 && false) // RGB is 0, so use normal vector as color info.
         {
-          ROS_ERROR("[Tsuru] PointCloud is competely black. Camera input cloud might not contain color information.");
+          ROS_ERROR("[Tsuru] PointCloud is completely black. Camera input cloud might not contain color information.");
           if (!m_octree->averageNodeColor(key, /*r=*/abs(it->normal_x) * 100, abs(it->normal_y) * 100, abs(it->normal_z) * 100))
           {
             // ROS_ERROR("No nodes at key. Let me assign a new node now.");

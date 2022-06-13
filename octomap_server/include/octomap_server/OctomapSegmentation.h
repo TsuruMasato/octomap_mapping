@@ -55,6 +55,7 @@ class OctomapSegmentation
 public:
   OctomapSegmentation();
   ~OctomapSegmentation(){};
+  void set_frame_id(const std::string &world_frame_id) { frame_id_ = world_frame_id; };
 
   /* main function */
   pcl::PointCloud<pcl::PointXYZRGB> segmentation(octomap_server::OctomapServer::OcTreeT* &target_octomap, visualization_msgs::MarkerArray &marker_array);
