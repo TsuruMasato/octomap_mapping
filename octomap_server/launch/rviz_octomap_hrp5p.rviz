@@ -736,10 +736,38 @@ Visualization Manager:
       Axis: Z
       Channel Name: intensity
       Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: RGB8
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: PointCloud2
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.009999999776482582
+      Style: Flat Squares
+      Topic: /multisense/organized_image_points2_color
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
       Color: 255; 170; 0
       Color Transformer: RGB8
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
@@ -754,12 +782,12 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Class: octomap_rviz_plugin/ColorOccupancyGrid
       Enabled: true
-      Max. Height Display: inf
+      Max. Height Display: 3.4028234663852886e+38
       Max. Octree Depth: 16
-      Min. Height Display: -inf
+      Min. Height Display: -3.4028234663852886e+38
       Name: ColorOccupancyGrid
       Octomap Topic: /octomap_full
       Queue Size: 5
@@ -767,6 +795,16 @@ Visualization Manager:
       Voxel Alpha: 1
       Voxel Coloring: Cell Color
       Voxel Rendering: Occupied Voxels
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /normal_vector_array
+      Name: MarkerArray
+      Namespaces:
+        floor_plane: true
+        normal_vectors: true
+        wall_plane: true
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -795,25 +833,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 5.749571800231934
+      Distance: 5.734017848968506
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.311457097530365
-        Y: 0.17191539704799652
-        Z: -0.09610249102115631
+        X: -0.5303089022636414
+        Y: 0.998870313167572
+        Z: 0.09675878286361694
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.694800853729248
+      Pitch: 0.48480069637298584
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.0022599697113037
+      Yaw: 2.192275285720825
     Saved: ~
 Window Geometry:
   Displays:

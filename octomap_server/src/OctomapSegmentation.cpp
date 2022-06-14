@@ -242,7 +242,7 @@ bool OctomapSegmentation::clustering(const pcl::PointCloud<pcl::PointXYZRGBNorma
   float cluster_tolerance = 0.12;
   cec.setClusterTolerance(cluster_tolerance);
   /*各クラスタのメンバの最小数を設定*/
-  int min_cluster_size = 20;  // it was 30 for long time
+  int min_cluster_size = 15;  // it was 30 for long time, and changed to 20. And now for Choreonoid simulation, became smaller
   cec.setMinClusterSize(min_cluster_size);
   /*各クラスタのメンバの最大数を設定*/
   cec.setMaxClusterSize(input_cloud->points.size());
@@ -289,7 +289,7 @@ bool OctomapSegmentation::CustomCondition(const pcl::PointXYZRGBNormal &seedPoin
       candidatePoint.normal_z);
   double angle = acos(N1.dot(N2) / N1.norm() / N2.norm()); //法線ベクトル間の角度[rad]
 
-  const double threshold_angle = 3.0; //閾値[deg]
+  const double threshold_angle = 10.0; //閾値[deg]
   if (angle / M_PI * 180.0 < threshold_angle)
     return true;
   else
@@ -351,72 +351,77 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
     auto target_ptr = input_clusters.at(i);
     pcl::PCA<PCLPoint> pca;
     pca.setInputCloud(target_ptr);
-    float norm_x = pca.getEigenValues().x();
-    float norm_y = pca.getEigenValues().y();
-    float norm_z = pca.getEigenValues().z();
-    // ROS_ERROR("norm_x : %.2f, norm_y : %.2f, norm_z : %.2f", norm_x, norm_y, norm_z);
+    float norm_x = pca.getEigenValues().x();  // the most effective eigen value
+    float norm_y = pca.getEigenValues().y();  // 2nd eigen value
+    float norm_z = pca.getEigenValues().z();  // 3rd eigen value
+    Eigen::Vector3f first_eigen_vector = pca.getEigenVectors().row(0);
+    Eigen::Vector3f second_eigen_vector = pca.getEigenVectors().row(1);
+    Eigen::Vector3f third_eigen_vector = pca.getEigenVectors().row(2);
+    ROS_ERROR("norm_x : %.2f, norm_y : %.2f, norm_z : %.2f", norm_x, norm_y, norm_z);
+    ROS_ERROR("1st EigenVector : (%.2f, %.2f, %.2f)", first_eigen_vector.x(), first_eigen_vector.y(), first_eigen_vector.z());
+    ROS_ERROR("2nd EigenVector : (%.2f, %.2f, %.2f)", second_eigen_vector.x(), second_eigen_vector.y(), second_eigen_vector.z());
+    ROS_ERROR("3rd EigenVector : (%.2f, %.2f, %.2f)", third_eigen_vector.x(), third_eigen_vector.y(), third_eigen_vector.z());
 
     // TODO : think better threshold
-    bool is_meaningful_x = norm_x > 3.0f;
-    bool is_meaningful_y = norm_y > 3.0f;
-    bool is_meaningful_z = norm_z > 3.0f;
-    int8_t num_meaningful_axis = is_meaningful_x + is_meaningful_y + is_meaningful_z;
+    float first_principal_component, second_principal_component, third_principal_component;
+    std::vector<float> norms;
+    norms.push_back(norm_x);
+    norms.push_back(norm_y);
+    norms.push_back(norm_z);
+    std::sort(norms.begin(), norms.end(), std::greater<float>());
+    first_principal_component = norms.at(0);
+    second_principal_component = norms.at(1);
+    third_principal_component = norms.at(2);
 
-    // Eigen::Vector3f min_obb, max_obb, center_obb;
-    // Eigen::Matrix3f rot_obb;
+    // bool is_meaningful_x, is_meaningful_y, is_meaningful_z;
     pcl::PointCloud<PCLPoint>::Ptr cloud_hull(new pcl::PointCloud<PCLPoint>);
     std::vector<pcl::Vertices> cloud_vertices;
     pcl::ConvexHull<PCLPoint> chull;
+    chull.setInputCloud(target_ptr);
+    chull.setDimension(3);
+    chull.reconstruct(*cloud_hull, cloud_vertices);
 
-    /* if there are two meaningful norms, this cluster is a plane */
-    switch (num_meaningful_axis)
+    if(first_principal_component < second_principal_component * 3.0 && second_principal_component > third_principal_component * 10.0)
     {
-    case 3:
-      cubic_clusters.push_back(target_ptr);
-      break;
-
-    case 2:
-      plane_clusters.push_back(target_ptr);
-      chull.setInputCloud(target_ptr);
-      chull.setDimension(3);
-      chull.reconstruct(*cloud_hull, cloud_vertices);
-      if (abs(pca.getEigenVectors().coeff(2,2)) < 0.5f) // wall
+      // this cluster has a certain x-y area, and it's very thin : Plane
+      if(abs(third_eigen_vector.z()) < 0.5f)
       {
+        ROS_INFO("wall");
         add_wall_marker(pca, marker_id, marker_array, frame_id_);
         std::vector<uint8_t> color{0, 255, 0};
         add_line_marker(cloud_hull, cloud_vertices, color, marker_id, marker_array, frame_id_);
       }
-      else  // floor,stair,step
+      else
       {
+        ROS_INFO("big floor or stair");
         add_floor_marker(pca, marker_id, marker_array, frame_id_);
         std::vector<uint8_t> color{255, 20, 20};
         add_line_marker(cloud_hull, cloud_vertices, color, marker_id, marker_array, frame_id_);
       }
-      break;
-
-    case 1:
-      sylinder_clusters.push_back(target_ptr);
-      /*
-      // generate convex-hull.
-      chull.setInputCloud(target_ptr);
-      chull.setDimension(3);
-      chull.reconstruct(*cloud_hull, cloud_vertices);
-      add_cylinder_marker(pca, marker_id, marker_array, frame_id_);
+    }
+    else if(first_principal_component > second_principal_component * 5.0)
+    {
+      // when the 1st principal is very big, it must be small step, cylinder, or stick-shape.
+      if(abs(first_eigen_vector.z()) < 0.1 && abs(third_eigen_vector.z()) > 0.8)
       {
-        std::vector<uint8_t> color{30, 150, 255};
+        ROS_WARN("small step. you can land here");
+        add_step_marker(pca, marker_id, marker_array, frame_id_);
+        std::vector<uint8_t> color{255, 220, 200};
         add_line_marker(cloud_hull, cloud_vertices, color, marker_id, marker_array, frame_id_);
       }
-      */
-      break;
-
-    case 0:
-      the_others.push_back(target_ptr);
-      break;
-
-    default:
-      ROS_ERROR("[OctomapSegmentation] failed in switch. num_meaningful_axis : %d", num_meaningful_axis);
-      break;
-    } 
+      else if(abs(first_eigen_vector.z()) > 0.3)
+      {
+        ROS_WARN("hand-rail or some vertical stick");
+        add_handrail_marker(pca, marker_id, marker_array, frame_id_);
+        std::vector<uint8_t> color{180, 50, 255};
+        add_line_marker(cloud_hull, cloud_vertices, color, marker_id, marker_array, frame_id_);
+      }
+      else
+      {
+        ROS_WARN("ladder step (poll shape. Be careful if you want to land here)");
+      }
+      sylinder_clusters.push_back(target_ptr);
+    }
   }
   return true;
 }
@@ -563,6 +568,10 @@ void OctomapSegmentation::add_floor_marker(pcl::PCA<PCLPoint> &pca,
   Eigen::Vector3f axis_3rd(eigen_vec.coeff(0, 2), eigen_vec.coeff(1, 2), eigen_vec.coeff(2, 2));
   // qx.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_1st);
   // qy.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_2nd);
+  if (axis_3rd.z() < 0) // if the z axis was detected in negative direction :
+  {
+    axis_3rd = -axis_3rd; // flip
+  }
   qz.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_3rd);
 
   /* visualize arrow only with the 3rd Eigen Vector, because it is the plane normal vector.*/
@@ -592,38 +601,171 @@ void OctomapSegmentation::add_floor_marker(pcl::PCA<PCLPoint> &pca,
 
   marker_array.markers.push_back(marker);
 
-  // visualize plane vertices
-  /*ゴミコード
+  visualization_msgs::Marker wall_plane_marker;
+  wall_plane_marker.header.frame_id = frame_id_;
+  wall_plane_marker.ns = "wall_plane";
+  wall_plane_marker.type = visualization_msgs::Marker::CUBE;
+  wall_plane_marker.id = marker_id++;
+  wall_plane_marker.pose.position.x = center_position.x();
+  wall_plane_marker.pose.position.y = center_position.y();
+  wall_plane_marker.pose.position.z = center_position.z();
+  wall_plane_marker.pose.orientation.x = qz.x();
+  wall_plane_marker.pose.orientation.y = qz.y();
+  wall_plane_marker.pose.orientation.z = qz.z();
+  wall_plane_marker.pose.orientation.w = qz.w();
+  wall_plane_marker.scale.x = 0.001f;
+  wall_plane_marker.scale.y = eigen_values.y() * 0.01; // plane width
+  wall_plane_marker.scale.z = eigen_values.x() * 0.01; // plane height, the largest component in 3 eigen values
+  wall_plane_marker.color.r = 1.0;
+  wall_plane_marker.color.g = 0.7;
+  wall_plane_marker.color.b = 0.7;
+  wall_plane_marker.color.a = 1.0;
+  marker_array.markers.push_back(wall_plane_marker);
+}
+
+void OctomapSegmentation::add_step_marker(pcl::PCA<PCLPoint> &pca,
+                                           int &marker_id,
+                                           visualization_msgs::MarkerArray &marker_array,
+                                           const std::string &frame_id)
+{
+  visualization_msgs::Marker marker;
+  marker.lifetime = ros::Duration(3.0);
+  marker.header.frame_id = frame_id;
+  marker.ns = "normal_vectors";
+  marker.type = visualization_msgs::Marker::ARROW;
+  marker.scale.x = 0.4;  // length:40cm
+  marker.scale.y = 0.04; // width of the allow
+  marker.scale.z = 0.04; // width of the allow
+
+  Eigen::Vector3f center_position;
+  center_position << pca.getMean().coeff(0), pca.getMean().coeff(1), pca.getMean().coeff(2);
+  marker.pose.position.x = center_position.x();
+  marker.pose.position.y = center_position.y();
+  marker.pose.position.z = center_position.z();
+
+  Eigen::Quaternionf qx, qy, qz;
+  Eigen::Matrix3f eigen_vec = pca.getEigenVectors();
+  Eigen::Vector3f eigen_values = pca.getEigenValues();
+  Eigen::Vector3f axis_1st(eigen_vec.coeff(0, 0), eigen_vec.coeff(1, 0), eigen_vec.coeff(2, 0));
+  Eigen::Vector3f axis_2nd(eigen_vec.coeff(0, 1), eigen_vec.coeff(1, 1), eigen_vec.coeff(2, 1));
+  Eigen::Vector3f axis_3rd(eigen_vec.coeff(0, 2), eigen_vec.coeff(1, 2), eigen_vec.coeff(2, 2));
+  if(axis_3rd.z() < 0)  // if the z axis was detected in negative direction :
+  {
+    axis_3rd = -axis_3rd; // flip
+  }
+  // qx.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_1st);
+  // qy.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_2nd);
+  qz.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_3rd);
+
+  /* visualize arrow only with the 3rd Eigen Vector, because it is the plane normal vector.*/
   marker.id = marker_id++;
-  marker.type = visualization_msgs::Marker::TRIANGLE_LIST;
   marker.pose.orientation.x = qz.x();
   marker.pose.orientation.y = qz.y();
   marker.pose.orientation.z = qz.z();
   marker.pose.orientation.w = qz.w();
-  marker.scale.x = 1.0;
-  marker.scale.y = 1.0;
-  marker.scale.z = 1.0;
   marker.color.r = 1.0;
-  marker.color.g = 0.0;
+  marker.color.g = 0.95;
   marker.color.b = 0.0;
   marker.color.a = 1.0;
+  marker_array.markers.push_back(marker);
 
-  // calc 4 vertices
-  Eigen::Vector3f point_ur, point_ul, point_br, point_bl; // upper right, upper left, bottom right, bottom left
-  Eigen::Vector3f point_um, point_bm, point_rm, point_lm;
-
-  point_um = center_position + axis_1st * eigen_values.x() * 0.001;
-  point_bm = center_position - axis_1st * eigen_values.x() * 0.001;
-  point_rm = center_position + axis_2nd * eigen_values.y() * 0.001;
-  point_lm = center_position - axis_2nd * eigen_values.y() * 0.001;
-
-  marker.points.push_back(convert_eigen_to_geomsg(point_um));
-  marker.points.push_back(convert_eigen_to_geomsg(point_bm));
-  marker.points.push_back(convert_eigen_to_geomsg(point_rm));
-  // marker.points.push_back(convert_eigen_to_geomsg(point_lm));
+  // text
+  marker.id = marker_id++;
+  marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+  marker.pose.position = convert_eigen_to_geomsg(center_position + axis_3rd * 0.3f + axis_1st * 0.2f);
+  marker.scale.z = 0.13;
+  marker.color.b = 0.9;
+  marker.color.g = 0.9;
+  marker.color.r = 0.9;
+  marker.color.a = 1.0;
+  char plane_equation[30];
+  sprintf(plane_equation, "(%.2f,%.2f,%.2f)", axis_3rd.x(), axis_3rd.y(), axis_3rd.z());
+  marker.text = "small step\n" + std::string(plane_equation);
 
   marker_array.markers.push_back(marker);
-  */
+
+  visualization_msgs::Marker wall_plane_marker;
+  wall_plane_marker.header.frame_id = frame_id_;
+  wall_plane_marker.ns = "wall_plane";
+  wall_plane_marker.type = visualization_msgs::Marker::CUBE;
+  wall_plane_marker.id = marker_id++;
+  wall_plane_marker.pose.position.x = center_position.x();
+  wall_plane_marker.pose.position.y = center_position.y();
+  wall_plane_marker.pose.position.z = center_position.z();
+  wall_plane_marker.pose.orientation.x = qz.x();
+  wall_plane_marker.pose.orientation.y = qz.y();
+  wall_plane_marker.pose.orientation.z = qz.z();
+  wall_plane_marker.pose.orientation.w = qz.w();
+  wall_plane_marker.scale.x = 0.001f;
+  wall_plane_marker.scale.y = eigen_values.y() * 0.01; // plane width
+  wall_plane_marker.scale.z = eigen_values.x() * 0.01; // plane height, the largest component in 3 eigen values
+  wall_plane_marker.color.r = 1.0;
+  wall_plane_marker.color.g = 0.7;
+  wall_plane_marker.color.b = 0.7;
+  wall_plane_marker.color.a = 1.0;
+  marker_array.markers.push_back(wall_plane_marker);
+}
+
+void OctomapSegmentation::add_handrail_marker(pcl::PCA<PCLPoint> &pca,
+                                          int &marker_id,
+                                          visualization_msgs::MarkerArray &marker_array,
+                                          const std::string &frame_id)
+{
+  visualization_msgs::Marker marker;
+  marker.lifetime = ros::Duration(3.0);
+  marker.header.frame_id = frame_id;
+  marker.ns = "normal_vectors";
+  marker.type = visualization_msgs::Marker::ARROW;
+  marker.scale.x = 0.4;  // length:40cm
+  marker.scale.y = 0.04; // width of the allow
+  marker.scale.z = 0.04; // width of the allow
+
+  Eigen::Vector3f center_position;
+  center_position << pca.getMean().coeff(0), pca.getMean().coeff(1), pca.getMean().coeff(2);
+  marker.pose.position.x = center_position.x();
+  marker.pose.position.y = center_position.y();
+  marker.pose.position.z = center_position.z();
+
+  Eigen::Quaternionf qx, qy, qz;
+  Eigen::Matrix3f eigen_vec = pca.getEigenVectors();
+  Eigen::Vector3f eigen_values = pca.getEigenValues();
+  Eigen::Vector3f axis_1st(eigen_vec.coeff(0, 0), eigen_vec.coeff(1, 0), eigen_vec.coeff(2, 0));
+  Eigen::Vector3f axis_2nd(eigen_vec.coeff(0, 1), eigen_vec.coeff(1, 1), eigen_vec.coeff(2, 1));
+  Eigen::Vector3f axis_3rd(eigen_vec.coeff(0, 2), eigen_vec.coeff(1, 2), eigen_vec.coeff(2, 2));
+  if (axis_3rd.z() < 0) // if the z axis was detected in negative direction :
+  {
+    axis_3rd = -axis_3rd; // flip
+  }
+  // qx.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_1st);
+  // qy.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_2nd);
+  qz.setFromTwoVectors(Eigen::Vector3f(1, 0, 0), axis_3rd);
+
+  /* visualize arrow only with the 3rd Eigen Vector, because it is the plane normal vector.*/
+  marker.id = marker_id++;
+  marker.pose.orientation.x = qz.x();
+  marker.pose.orientation.y = qz.y();
+  marker.pose.orientation.z = qz.z();
+  marker.pose.orientation.w = qz.w();
+  marker.color.r = 1.0;
+  marker.color.g = 0.0;
+  marker.color.b = 1.0;
+  marker.color.a = 1.0;
+  marker_array.markers.push_back(marker);
+
+  // text
+  marker.id = marker_id++;
+  marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+  marker.pose.position = convert_eigen_to_geomsg(center_position + axis_3rd * 0.3f + axis_1st * 0.2f);
+  marker.scale.z = 0.13;
+  marker.color.b = 0.9;
+  marker.color.g = 0.9;
+  marker.color.r = 0.9;
+  marker.color.a = 1.0;
+  char plane_equation[30];
+  sprintf(plane_equation, "(%.2f,%.2f,%.2f)", axis_3rd.x(), axis_3rd.y(), axis_3rd.z());
+  marker.text = "handrail\n" + std::string(plane_equation);
+
+  marker_array.markers.push_back(marker);
 
   visualization_msgs::Marker wall_plane_marker;
   wall_plane_marker.header.frame_id = frame_id_;
