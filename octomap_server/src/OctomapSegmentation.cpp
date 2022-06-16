@@ -171,7 +171,7 @@ pcl::ModelCoefficients OctomapSegmentation::ransac_horizontal_plane(const pcl::P
     return *coefficients;
   }
 
-  if (-coefficients->values.at(3) < -0.5) // when the height of the plane is enough low:
+  if (-coefficients->values.at(3) < 0.1) // when the height of the plane is enough low:
   {
     // ROS_WARN("floor height : %f", -coefficients->values.at(3));
     pcl::ExtractIndices<pcl::PointXYZRGBNormal> extract;
