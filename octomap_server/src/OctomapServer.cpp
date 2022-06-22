@@ -392,6 +392,7 @@ OctomapServer::OctomapServer(const ros::NodeHandle private_nh_, const ros::NodeH
   m_occupancyMaxZ(std::numeric_limits<double>::max()),
   m_minSizeX(0.0), m_minSizeY(0.0),
   m_filterSpeckles(true), m_filterGroundPlane(false),
+  m_camera_initial_height(1.05),
   m_groundFilterDistance(0.04), m_groundFilterAngle(0.15), m_groundFilterPlaneDistance(0.07),
   m_compressMap(true),
   m_incrementalUpdate(false),
@@ -430,6 +431,7 @@ OctomapServer::OctomapServer(const ros::NodeHandle private_nh_, const ros::NodeH
   m_nh_private.param("ground_filter/plane_distance", m_groundFilterPlaneDistance, m_groundFilterPlaneDistance);
 
   m_nh_private.param("sensor_model/max_range", m_maxRange, m_maxRange);
+  m_nh_private.param("camera_initial_height", m_camera_initial_height, m_camera_initial_height);
 
   m_nh_private.param("resolution", m_res, m_res);
   m_nh_private.param("sensor_model/hit", probHit, 0.7);
@@ -798,6 +800,8 @@ void OctomapServer::insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr
   /* Segment the OctoMap according to its color and normal vector */
 
   OctomapSegmentation seg;
+  seg.set_frame_id(m_worldFrameId);
+  seg.set_camera_initial_height(m_camera_initial_height);
   segmented_pc_.clear();
   marker_array_.markers.clear();
   segmented_pc_ = seg.segmentation(m_octree, marker_array_);

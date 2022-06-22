@@ -56,6 +56,7 @@ public:
   OctomapSegmentation();
   ~OctomapSegmentation(){};
   void set_frame_id(const std::string &world_frame_id) { frame_id_ = world_frame_id; };
+  void set_camera_initial_height(const double &input_height) { camera_initial_height_ = input_height; };
 
   /* main function */
   pcl::PointCloud<pcl::PointXYZRGB> segmentation(octomap_server::OctomapServer::OcTreeT* &target_octomap, visualization_msgs::MarkerArray &marker_array);
@@ -78,7 +79,8 @@ public:
   bool isSpeckleNode(const OcTreeKey &nKey, octomap_server::OctomapServer::OcTreeT *&target_octomap);
 
 private:
-  std::string frame_id_;
+  std::string frame_id_ = "map";
+  double camera_initial_height_ = 1.05;
   int id_;
   // visualization_msgs::MarkerArray marker_array_;
   geometry_msgs::Point convert_eigen_to_geomsg(const Eigen::Vector3f input_vector);

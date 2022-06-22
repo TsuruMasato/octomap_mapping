@@ -9,7 +9,6 @@ OctomapSegmentation::OctomapSegmentation()
 pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServer::OcTreeT *&target_octomap, visualization_msgs::MarkerArray &marker_array)
 {
   // ROS_ERROR("OctomapSegmentation::segmentation() start");
-  set_frame_id("choreonoid_origin");
   // init pointcloud:
   pcl::PointCloud<OctomapServer::PCLPoint>::Ptr pcl_cloud(new pcl::PointCloud<OctomapServer::PCLPoint>);
 
@@ -150,6 +149,8 @@ pcl::ModelCoefficients OctomapSegmentation::ransac_horizontal_plane(const pcl::P
   // Create the segmentation object
   pcl::SACSegmentation<pcl::PointXYZRGBNormal> seg;
 
+  float floor_height_threshold = -camera_initial_height_ + 0.5;
+
   // Optional
   seg.setOptimizeCoefficients(true);
   // Mandatory
@@ -171,7 +172,7 @@ pcl::ModelCoefficients OctomapSegmentation::ransac_horizontal_plane(const pcl::P
     return *coefficients;
   }
 
-  if (-coefficients->values.at(3) < 0.1) // when the height of the plane is enough low:
+  if (-coefficients->values.at(3) < floor_height_threshold) // when the height of the plane is enough low:
   {
     // ROS_WARN("floor height : %f", -coefficients->values.at(3));
     pcl::ExtractIndices<pcl::PointXYZRGBNormal> extract;
@@ -208,7 +209,7 @@ pcl::ModelCoefficients OctomapSegmentation::ransac_horizontal_plane(const pcl::P
       coefficients->header.frame_id = "FAIL";
       return *coefficients;
     }
-    if (-coefficients->values.at(3) < -0.5) // the floor hight must be low.
+    if (-coefficients->values.at(3) < floor_height_threshold) // the floor hight must be low.
     {
       // extract.setInputCloud(input_cloud);
       extract.setIndices(inliers);
@@ -216,12 +217,18 @@ pcl::ModelCoefficients OctomapSegmentation::ransac_horizontal_plane(const pcl::P
       extract.filter(*floor_cloud);
       extract.setNegative(true);
       extract.filter(*obstacle_cloud);
+
+      /* give back ceiling points */
+      *obstacle_cloud += *ceiling_cloud;
       return *coefficients;
     }
     else
     {
       ROS_WARN("[OctomapSegmentation::ransac_horizontal_plane] found undesired horizontal plane (maybe tables)");
       pcl::copyPointCloud(*input_cloud, *obstacle_cloud);
+      /* give back ceiling points */
+      *obstacle_cloud += *ceiling_cloud;
+      coefficients->header.frame_id = "FAIL";
       return *coefficients;
     }
   }
@@ -381,7 +388,7 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
     chull.setDimension(3);
     chull.reconstruct(*cloud_hull, cloud_vertices);
 
-    if(first_principal_component < second_principal_component * 3.0 && second_principal_component > third_principal_component * 10.0)
+    if(second_principal_component > 1.0 && second_principal_component > third_principal_component * 10.0)
     {
       // this cluster has a certain x-y area, and it's very thin : Plane
       if(abs(third_eigen_vector.z()) < 0.5f)

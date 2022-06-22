@@ -522,6 +522,8 @@ protected:
   double m_groundFilterAngle;
   double m_groundFilterPlaneDistance;
 
+  double m_camera_initial_height;
+
   bool m_compressMap;
 
   bool m_initConfig;
