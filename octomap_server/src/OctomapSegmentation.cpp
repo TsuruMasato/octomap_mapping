@@ -18,37 +18,12 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
   /* *********************************************************** */
   /* convert Octomap to PCL point cloud for segmentation process */
   /* *********************************************************** */
-
-  // now, traverse all leafs in the tree:
-  for (OctomapServer::OcTreeT::iterator it = target_octomap->begin(target_octomap->getTreeDepth()), end = target_octomap->end(); it != end; ++it)
+  bool is_success = convert_octomap_to_pcl_cloud(target_octomap, pcl_cloud);
+  if(!is_success)
   {
-    // bool inUpdateBBX = OctomapServer::isInUpdateBBX(it);
-    if (target_octomap->isNodeOccupied(*it))
-    {  
-      // Ignore speckles in the map:
-      bool isSpeckleFilterEnable = false;
-      if (isSpeckleFilterEnable && (it.getDepth() >= target_octomap->getTreeDepth()) && isSpeckleNode(it.getKey(), target_octomap))
-      {
-        target_octomap->deleteNode(it.getKey(), target_octomap->getTreeDepth());
-        // ROS_ERROR("Ignoring single speckle at (%f,%f,%f)", x, y, z);
-        continue;
-      } // else: current octree node is no speckle, send it out
-      
-
-      OctomapServer::PCLPoint point;
-      point.x = it.getX();
-      point.y = it.getY();
-      point.z = it.getZ();
-      point.r = it->getColor().r;
-      point.g = it->getColor().g;
-      point.b = it->getColor().b;
-      point.normal_x = it->getNormalVector().x();
-      point.normal_y = it->getNormalVector().y();
-      point.normal_z = it->getNormalVector().z();
-      // double half_size = it.getSize() / 2.0;
-
-      pcl_cloud->push_back(point);
-    }
+    ROS_ERROR("[OctomapSegmentation] failed to convert Octomap to PCL PointCloud");
+    pcl::PointCloud<pcl::PointXYZRGB> empty;
+    return empty;
   }
 
   /* for sure. it works on May.27th. The number of voxels and PCL point cloud are exacly same. */
@@ -140,6 +115,44 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
   pcl::copyPointCloud(*result_cloud, simplified_pc);
   return simplified_pc;
 };
+
+bool OctomapSegmentation::convert_octomap_to_pcl_cloud(OctomapServer::OcTreeT* &input_octomap, const pcl::PointCloud<OctomapServer::PCLPoint>::Ptr &output_cloud)
+{
+  // now, traverse all leafs in the tree:
+  for (OctomapServer::OcTreeT::iterator it = input_octomap->begin(input_octomap->getTreeDepth()), end = input_octomap->end(); it != end; ++it)
+  {
+    // bool inUpdateBBX = OctomapServer::isInUpdateBBX(it);
+    if (input_octomap->isNodeOccupied(*it))
+    {
+      // Ignore speckles in the map:
+      bool isSpeckleFilterEnable = false;
+      if (isSpeckleFilterEnable && (it.getDepth() >= input_octomap->getTreeDepth()) && isSpeckleNode(it.getKey(), input_octomap))
+      {
+        input_octomap->deleteNode(it.getKey(), input_octomap->getTreeDepth());
+        // ROS_ERROR("Ignoring single speckle at (%f,%f,%f)", x, y, z);
+        continue;
+      } // else: current octree node is no speckle, send it out
+
+      OctomapServer::PCLPoint point;
+      point.x = it.getX();
+      point.y = it.getY();
+      point.z = it.getZ();
+      point.r = it->getColor().r;
+      point.g = it->getColor().g;
+      point.b = it->getColor().b;
+      point.normal_x = it->getNormalVector().x();
+      point.normal_y = it->getNormalVector().y();
+      point.normal_z = it->getNormalVector().z();
+      // double half_size = it.getSize() / 2.0;
+
+      output_cloud->push_back(point);
+    }
+  }
+  if(output_cloud->size() != 0)
+    return true;
+  else
+    return false;
+}
 
 pcl::ModelCoefficients OctomapSegmentation::ransac_horizontal_plane(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &input_cloud, const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &floor_cloud, const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr &obstacle_cloud, double plane_thickness, const Eigen::Vector3f &axis)
 {
