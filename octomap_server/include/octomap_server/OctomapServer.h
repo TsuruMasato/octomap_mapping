@@ -34,6 +34,8 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <std_msgs/ColorRGBA.h>
+#include <deque>
+#include <unordered_map>
 
 // #include <moveit_msgs/CollisionObject.h>
 // #include <moveit_msgs/CollisionMap.h>
@@ -167,7 +169,39 @@ public:
   /* shape primitive*/
   inline ShapePrimitive getPrimitive() const { return shape_primitive; }
   inline void setPrimitive(ShapePrimitive p) { shape_primitive = p; }
-  inline void averagePrimitive(ShapePrimitive p) { shape_primitive = p; }
+  inline void averagePrimitive(ShapePrimitive p)
+  {
+    latest_10_shape_primitives.push_back(p);
+    while(latest_10_shape_primitives.size() > 10)
+    {
+      latest_10_shape_primitives.pop_front();
+    }
+    ShapePrimitive mode_p = extract_mode_primitive(latest_10_shape_primitives);
+    setPrimitive(mode_p);
+  }
+
+  inline ShapePrimitive extract_mode_primitive(std::deque<ShapePrimitive> &input_primitive_deque)
+  {
+    std::unordered_map<ShapePrimitive, size_t> count_table;
+    for (auto itr = input_primitive_deque.begin(); itr != input_primitive_deque.end(); itr++)
+    {
+      if(count_table.find(*itr) != count_table.end())
+      {
+        count_table.at(*itr)++;
+      }
+      else
+      {
+        count_table[*itr] = 1;
+      }
+    }
+    auto max_itr = std::max_element(count_table.begin(), count_table.end(), [](const auto &a, const auto &b) -> bool 
+    {
+      return (a.second < b.second);
+    }
+    );
+    ExOcTreeNode::ShapePrimitive p_mode = max_itr->first;
+    return p_mode;
+  }
 
   inline Eigen::Vector3d getNormalVector() const { return normal_vector; }
 
@@ -215,6 +249,7 @@ public:
 protected:
   Color color;
   ShapePrimitive shape_primitive;
+  std::deque<ShapePrimitive> latest_10_shape_primitives;
   Eigen::Vector3d normal_vector{0.0, 0.0, 0.0};
   bool affordance_ready = false;
   Eigen::Vector3d approach_direction;
