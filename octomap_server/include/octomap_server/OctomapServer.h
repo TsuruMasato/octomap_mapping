@@ -167,6 +167,7 @@ public:
   /* shape primitive*/
   inline ShapePrimitive getPrimitive() const { return shape_primitive; }
   inline void setPrimitive(ShapePrimitive p) { shape_primitive = p; }
+  inline void averagePrimitive(ShapePrimitive p) { shape_primitive = p; }
 
   inline Eigen::Vector3d getNormalVector() const { return normal_vector; }
 
@@ -296,11 +297,20 @@ public:
     return averageNodeNormalVector(key, n_vec_x, n_vec_y, n_vec_z);
   }
 
-  ExOcTreeNode *setNodePrimitive(const OcTreeKey &key,
-                                      ExOcTreeNode::ShapePrimitive p);
-
   ExOcTreeNode *setNodeNormalVector(const OcTreeKey &key,
                                          const Eigen::Vector3d n_vec);
+
+  ExOcTreeNode *averageNodePrimitive(const OcTreeKey &key, ExOcTreeNode::ShapePrimitive p);
+
+  ExOcTreeNode *averageNodePrimitive(float x, float y, float z, ExOcTreeNode::ShapePrimitive p) // overlay for (x,y,z) argument
+  {
+    OcTreeKey key;
+    if (!this->coordToKeyChecked(point3d(x, y, z), key))
+      return NULL;
+    return averageNodePrimitive(key, p);
+  }
+  ExOcTreeNode *setNodePrimitive(const OcTreeKey &key,
+                                 ExOcTreeNode::ShapePrimitive p);
 
   // update inner nodes, sets color to average child color
   void updateInnerOccupancy();

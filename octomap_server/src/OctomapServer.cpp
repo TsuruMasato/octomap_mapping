@@ -123,6 +123,23 @@ namespace octomap_server{
     return n;
   }
 
+  ExOcTreeNode *ExOcTree::averageNodePrimitive(const OcTreeKey &key, ExOcTreeNode::ShapePrimitive p)
+  {
+    ExOcTreeNode *n = search(key);
+    if (n != nullptr)
+    {
+      // std::cerr << "averageNodePrimitive if(true) " << std::endl;
+      n->averagePrimitive(p);
+      return n;
+    }
+    else
+    {
+      // std::cerr << "averageNodePrimitive if (false)" << std::endl;
+      ROS_ERROR("[averageNodePrimitive]null ptr");
+      return nullptr;
+    }
+  }
+
   ExOcTreeNode *ExOcTree::setNodePrimitive(const OcTreeKey &key,
                                                      ExOcTreeNode::ShapePrimitive p)
   {
@@ -257,6 +274,7 @@ namespace octomap_server{
                                                   float n_vec_y,
                                                   float n_vec_z)
   {
+    // WARNNING!! We should not calc the average for Normal vectors, because it sometimes flip.
     ExOcTreeNode *n = search(key);
     if (n != 0)
     {
@@ -890,7 +908,8 @@ void OctomapServer::insertScan(const tf::Point& sensorOriginTf, const PCLPointCl
           }
         }
         m_octree->averageNodeNormalVector(/*pos*/ key, /*inputN*/ it->normal_x, it->normal_y, it->normal_z);
-        m_octree->setNodePrimitive(key, ExOcTreeNode::ShapePrimitive::OTHER);
+        // m_octree->setNodePrimitive(key, ExOcTreeNode::ShapePrimitive::OTHER);
+        m_octree->averageNodePrimitive(key, ExOcTreeNode::ShapePrimitive::OTHER);
 // #endif
       }
     } else {// ray longer than maxrange:;
@@ -1041,7 +1060,8 @@ void OctomapServer::insertScanWithPrimitives(const tf::Point &sensorOriginTf, co
         }
         m_octree->averageNodeNormalVector(/*pos*/ key, /*inputN*/ it->normal_x, it->normal_y, it->normal_z);
         // m_octree->setNodePrimitive(key, ExOcTreeNode::ShapePrimitive::FLOOR);
-        m_octree->setNodePrimitive(key, primitive_array.at(i));
+        // m_octree->setNodePrimitive(key, primitive_array.at(i));
+        m_octree->averageNodePrimitive(key, primitive_array.at(i));
         // #endif
       }
     }
@@ -1075,7 +1095,8 @@ void OctomapServer::insertScanWithPrimitives(const tf::Point &sensorOriginTf, co
     if (occupied_cells.find(*it) == occupied_cells.end())
     {
       m_octree->updateNode(*it, false);
-      m_octree->setNodePrimitive(*it, ExOcTreeNode::ShapePrimitive::FREE);
+      // m_octree->setNodePrimitive(*it, ExOcTreeNode::ShapePrimitive::FREE);
+      m_octree->averageNodePrimitive(*it, ExOcTreeNode::ShapePrimitive::FREE);
     }
   }
 
