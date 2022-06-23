@@ -119,6 +119,7 @@ public:
     FLOOR,
     CEILING,
     HANDRAIL,
+    STEP,
     OTHER,
     FREE
   };

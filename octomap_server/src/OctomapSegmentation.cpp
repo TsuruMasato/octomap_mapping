@@ -11,6 +11,7 @@ pcl::PointCloud<pcl::PointXYZRGB> OctomapSegmentation::segmentation(OctomapServe
   // ROS_ERROR("OctomapSegmentation::segmentation() start");
   // init pointcloud:
   pcl::PointCloud<OctomapServer::PCLPoint>::Ptr pcl_cloud(new pcl::PointCloud<OctomapServer::PCLPoint>);
+  set_private_octree(target_octomap);
 
   // call pre-traversal hook:
   ros::Time rostime = ros::Time::now();
@@ -368,9 +369,9 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
   int marker_id = 2; // id:0 and 1 is used for floor
   for (size_t i = 0; i < input_clusters.size(); i++)
   {
-    auto target_ptr = input_clusters.at(i);
+    auto target_cloud = input_clusters.at(i);
     pcl::PCA<PCLPoint> pca;
-    pca.setInputCloud(target_ptr);
+    pca.setInputCloud(target_cloud);
     float norm_x = pca.getEigenValues().x();  // the most effective eigen value
     float norm_y = pca.getEigenValues().y();  // 2nd eigen value
     float norm_z = pca.getEigenValues().z();  // 3rd eigen value
@@ -397,7 +398,7 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
     pcl::PointCloud<PCLPoint>::Ptr cloud_hull(new pcl::PointCloud<PCLPoint>);
     std::vector<pcl::Vertices> cloud_vertices;
     pcl::ConvexHull<PCLPoint> chull;
-    chull.setInputCloud(target_ptr);
+    chull.setInputCloud(target_cloud);
     chull.setDimension(3);
     chull.reconstruct(*cloud_hull, cloud_vertices);
 
@@ -407,6 +408,10 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
       if(abs(third_eigen_vector.z()) < 0.5f)
       {
         ROS_INFO("wall");
+        for (size_t i = 0; i < target_cloud->size(); i++)
+        {
+          private_octomap_->averageNodePrimitive(target_cloud->at(i).x, target_cloud->at(i).y, target_cloud->at(i).z, ExOcTreeNode::ShapePrimitive::WALL);
+        }
         add_wall_marker(pca, marker_id, marker_array, frame_id_);
         std::vector<uint8_t> color{0, 255, 0};
         add_line_marker(cloud_hull, cloud_vertices, color, marker_id, marker_array, frame_id_);
@@ -414,6 +419,11 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
       else
       {
         ROS_INFO("big floor or stair");
+        // TODO: should I detect the height, to destingish ceiling?
+        for (size_t i = 0; i < target_cloud->size(); i++)
+        {
+          private_octomap_->averageNodePrimitive(target_cloud->at(i).x, target_cloud->at(i).y, target_cloud->at(i).z, ExOcTreeNode::ShapePrimitive::FLOOR);
+        }
         add_floor_marker(pca, marker_id, marker_array, frame_id_);
         std::vector<uint8_t> color{255, 20, 20};
         add_line_marker(cloud_hull, cloud_vertices, color, marker_id, marker_array, frame_id_);
@@ -425,6 +435,10 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
       if(abs(first_eigen_vector.z()) < 0.1 && abs(third_eigen_vector.z()) > 0.8)
       {
         ROS_WARN("small step. you can land here");
+        for (size_t i = 0; i < target_cloud->size(); i++)
+        {
+          private_octomap_->averageNodePrimitive(target_cloud->at(i).x, target_cloud->at(i).y, target_cloud->at(i).z, ExOcTreeNode::ShapePrimitive::STEP);
+        }
         add_step_marker(pca, marker_id, marker_array, frame_id_);
         std::vector<uint8_t> color{255, 220, 200};
         add_line_marker(cloud_hull, cloud_vertices, color, marker_id, marker_array, frame_id_);
@@ -432,6 +446,10 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
       else if(abs(first_eigen_vector.z()) > 0.3)
       {
         ROS_WARN("hand-rail or some vertical stick");
+        for (size_t i = 0; i < target_cloud->size(); i++)
+        {
+          private_octomap_->averageNodePrimitive(target_cloud->at(i).x, target_cloud->at(i).y, target_cloud->at(i).z, ExOcTreeNode::ShapePrimitive::HANDRAIL);
+        }
         add_handrail_marker(pca, marker_id, marker_array, frame_id_);
         std::vector<uint8_t> color{180, 50, 255};
         add_line_marker(cloud_hull, cloud_vertices, color, marker_id, marker_array, frame_id_);
@@ -439,8 +457,12 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
       else
       {
         ROS_WARN("ladder step (poll shape. Be careful if you want to land here)");
+        for (size_t i = 0; i < target_cloud->size(); i++)
+        {
+          private_octomap_->averageNodePrimitive(target_cloud->at(i).x, target_cloud->at(i).y, target_cloud->at(i).z, ExOcTreeNode::ShapePrimitive::HANDRAIL);
+        }
       }
-      sylinder_clusters.push_back(target_ptr);
+      sylinder_clusters.push_back(target_cloud);
     }
   }
   return true;

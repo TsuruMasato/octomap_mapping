@@ -909,7 +909,7 @@ void OctomapServer::insertScan(const tf::Point& sensorOriginTf, const PCLPointCl
         }
         m_octree->averageNodeNormalVector(/*pos*/ key, /*inputN*/ it->normal_x, it->normal_y, it->normal_z);
         // m_octree->setNodePrimitive(key, ExOcTreeNode::ShapePrimitive::OTHER);
-        m_octree->averageNodePrimitive(key, ExOcTreeNode::ShapePrimitive::OTHER);
+        // m_octree->averageNodePrimitive(key, ExOcTreeNode::ShapePrimitive::OTHER);  // adding primitive here fills the queue with meaningless info. instead of this line, segmentation() function adds primitive info into OctoMap directly.
 // #endif
       }
     } else {// ray longer than maxrange:;
