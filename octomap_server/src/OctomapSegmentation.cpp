@@ -196,6 +196,12 @@ pcl::ModelCoefficients OctomapSegmentation::ransac_horizontal_plane(const pcl::P
     extract.filter(*floor_cloud);
     extract.setNegative(true);
     extract.filter(*obstacle_cloud);
+
+    for (size_t i = 0; i < floor_cloud->size(); i++)
+    {
+      private_octomap_->averageNodePrimitive(floor_cloud->at(i).x, floor_cloud->at(i).y, floor_cloud->at(i).z, ExOcTreeNode::ShapePrimitive::FLOOR);
+    }
+
     return *coefficients;
   }
 
@@ -211,6 +217,11 @@ pcl::ModelCoefficients OctomapSegmentation::ransac_horizontal_plane(const pcl::P
     extract.filter(*ceiling_cloud);
     extract.setNegative(true);
     extract.filter(*input_cloud); // keep the whole cloud in "input_cloud" except the ceiling.
+
+    for (size_t i = 0; i < ceiling_cloud->size(); i++)
+    {
+      private_octomap_->averageNodePrimitive(ceiling_cloud->at(i).x, ceiling_cloud->at(i).y, ceiling_cloud->at(i).z, ExOcTreeNode::ShapePrimitive::CEILING);
+    }
 
     /* 2nd RANSAC with same params. */
     inliers->indices.clear();
@@ -231,6 +242,11 @@ pcl::ModelCoefficients OctomapSegmentation::ransac_horizontal_plane(const pcl::P
       extract.filter(*floor_cloud);
       extract.setNegative(true);
       extract.filter(*obstacle_cloud);
+
+      for (size_t i = 0; i < floor_cloud->size(); i++)
+      {
+        private_octomap_->averageNodePrimitive(floor_cloud->at(i).x, floor_cloud->at(i).y, floor_cloud->at(i).z, ExOcTreeNode::ShapePrimitive::FLOOR);
+      }
 
       /* give back ceiling points */
       *obstacle_cloud += *ceiling_cloud;
@@ -288,6 +304,22 @@ bool OctomapSegmentation::clustering(const pcl::PointCloud<pcl::PointXYZRGBNorma
     output_results.push_back(tmp_clustered_points);
   }
   ROS_INFO("Clustering finish. It was devided into %d groups", output_results.size());
+
+  /* the others (noise or worthless part) */
+  pcl::PointIndices::Ptr the_rest_indices (new pcl::PointIndices);
+  for (size_t i = 0; i < cluster_indices.size(); i++)
+  {
+    the_rest_indices->indices.insert(the_rest_indices->indices.end(), cluster_indices[i].indices.begin(), cluster_indices[i].indices.end());
+  }
+  ei.setNegative(true);
+  
+  /*extract*/
+  pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr tmp_clustered_points(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+  ei.setIndices(the_rest_indices);
+  ei.filter(*tmp_clustered_points);
+  /* add the rest noise cluster at the end of clusters vector. */
+  output_results.push_back(tmp_clustered_points);
+  
 
   change_colors_debug(output_results);
   input_cloud->clear();
@@ -367,7 +399,7 @@ void OctomapSegmentation::add_color_and_accumulate(std::vector<pcl::PointCloud<p
 bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &input_clusters, visualization_msgs::MarkerArray &marker_array, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &cubic_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &plane_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &sylinder_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &the_others)
 {
   int marker_id = 2; // id:0 and 1 is used for floor
-  for (size_t i = 0; i < input_clusters.size(); i++)
+  for (size_t i = 0; i < input_clusters.size() - 1; i++)
   {
     auto target_cloud = input_clusters.at(i);
     pcl::PCA<PCLPoint> pca;
@@ -383,7 +415,6 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
     ROS_ERROR("2nd EigenVector : (%.2f, %.2f, %.2f)", second_eigen_vector.x(), second_eigen_vector.y(), second_eigen_vector.z());
     ROS_ERROR("3rd EigenVector : (%.2f, %.2f, %.2f)", third_eigen_vector.x(), third_eigen_vector.y(), third_eigen_vector.z());
 
-    // TODO : think better threshold
     float first_principal_component, second_principal_component, third_principal_component;
     std::vector<float> norms;
     norms.push_back(norm_x);
@@ -420,9 +451,19 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
       {
         ROS_INFO("big floor or stair");
         // TODO: should I detect the height, to destingish ceiling?
-        for (size_t i = 0; i < target_cloud->size(); i++)
+        if (target_cloud->begin()->z > 0.5f && target_cloud->end()->z > 0.5f)
+        { // ceiling
+          for (size_t i = 0; i < target_cloud->size(); i++)
+          {
+            private_octomap_->averageNodePrimitive(target_cloud->at(i).x, target_cloud->at(i).y, target_cloud->at(i).z, ExOcTreeNode::ShapePrimitive::CEILING);
+          }
+        }
+        else
         {
-          private_octomap_->averageNodePrimitive(target_cloud->at(i).x, target_cloud->at(i).y, target_cloud->at(i).z, ExOcTreeNode::ShapePrimitive::FLOOR);
+          for (size_t i = 0; i < target_cloud->size(); i++)
+          {
+            private_octomap_->averageNodePrimitive(target_cloud->at(i).x, target_cloud->at(i).y, target_cloud->at(i).z, ExOcTreeNode::ShapePrimitive::STEP);
+          }
         }
         add_floor_marker(pca, marker_id, marker_array, frame_id_);
         std::vector<uint8_t> color{255, 20, 20};
@@ -465,6 +506,13 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
       sylinder_clusters.push_back(target_cloud);
     }
   }
+
+  auto the_rest_noise_cluster = input_clusters.at(input_clusters.size()-1);
+  for (size_t i = 0; i < the_rest_noise_cluster->size(); i++)
+  {
+    private_octomap_->averageNodePrimitive(the_rest_noise_cluster->at(i).x, the_rest_noise_cluster->at(i).y, the_rest_noise_cluster->at(i).z, ExOcTreeNode::ShapePrimitive::OTHER);
+  }
+
   return true;
 }
 
@@ -524,40 +572,6 @@ void OctomapSegmentation::add_wall_marker(pcl::PCA<PCLPoint> &pca,
   marker.text = "Wall\n" + std::string(plane_equation);
   
   marker_array.markers.push_back(marker);
-
-  // visualize plane vertices
-  /*ゴミコード
-  marker.id = marker_id++;
-  marker.type = visualization_msgs::Marker::TRIANGLE_LIST;
-  marker.pose.orientation.x = qz.x();
-  marker.pose.orientation.y = qz.y();
-  marker.pose.orientation.z = qz.z();
-  marker.pose.orientation.w = qz.w();
-  marker.scale.x = 1.0;
-  marker.scale.y = 1.0;
-  marker.scale.z = 1.0;
-  marker.color.r = 1.0;
-  marker.color.g = 0.0;
-  marker.color.b = 0.0;
-  marker.color.a = 1.0;
-
-  // calc 4 vertices
-  Eigen::Vector3f point_ur, point_ul, point_br, point_bl; // upper right, upper left, bottom right, bottom left
-  Eigen::Vector3f point_um, point_bm, point_rm, point_lm;
-
-  point_um = center_position + axis_1st * eigen_values.x() * 0.001;
-  point_bm = center_position - axis_1st * eigen_values.x() * 0.001;
-  point_rm = center_position + axis_2nd * eigen_values.y() * 0.001;
-  point_lm = center_position - axis_2nd * eigen_values.y() * 0.001;
-
-  marker.points.push_back(convert_eigen_to_geomsg(point_um));
-  marker.points.push_back(convert_eigen_to_geomsg(point_bm));
-  marker.points.push_back(convert_eigen_to_geomsg(point_rm));
-  // marker.points.push_back(convert_eigen_to_geomsg(point_lm));
-
-  marker_array.markers.push_back(marker);
-  */
-
   
   visualization_msgs::Marker wall_plane_marker;
   wall_plane_marker.header.frame_id = frame_id_;

@@ -169,7 +169,8 @@ public:
 
   /* shape primitive*/
   inline ShapePrimitive getPrimitive() const { return shape_primitive; }
-  inline void setPrimitive(ShapePrimitive p) { shape_primitive = p; }
+  inline void setPrimitive(ShapePrimitive p) { shape_primitive = p; has_primitive = true;}
+  inline bool hasPrimitive() const { return has_primitive; }
   inline void averagePrimitive(ShapePrimitive p)
   {
     latest_10_shape_primitives.push_back(p);
@@ -201,6 +202,7 @@ public:
     }
     );
     ExOcTreeNode::ShapePrimitive p_mode = max_itr->first;
+    // ROS_INFO("p_mode: %d", p_mode);
     return p_mode;
   }
 
@@ -250,6 +252,7 @@ public:
 protected:
   Color color;
   ShapePrimitive shape_primitive;
+  bool has_primitive = false;
   std::deque<ShapePrimitive> latest_10_shape_primitives;
   Eigen::Vector3d normal_vector{0.0, 0.0, 0.0};
   bool affordance_ready = false;
@@ -445,7 +448,9 @@ protected:
   void reconfigureCallback(octomap_server::OctomapServerConfig& config, uint32_t level);
   void publishBinaryOctoMap(const ros::Time& rostime = ros::Time::now()) const;
   void publishFullOctoMap(const ros::Time& rostime = ros::Time::now()) const;
-  virtual void publishAll(const ros::Time& rostime = ros::Time::now());
+  void publishPrimitiveOctoMap(const ros::Time &rostime);
+  void change_color_as_primitive(OctomapServer::OcTreeT* &octree_ptr);
+  virtual void publishAll(const ros::Time &rostime = ros::Time::now());
 
   /**
   * @brief update occupancy map with a scan labeled as ground and nonground.
@@ -593,6 +598,8 @@ protected:
 
   pcl::PointCloud<pcl::PointXYZRGB> segmented_pc_;
   visualization_msgs::MarkerArray marker_array_;
+
+  bool color_as_primitive_mode_;
 
   bool subtract_point_cloud(PCLPointCloud::Ptr point_cloud);
   };

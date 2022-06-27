@@ -417,6 +417,7 @@ OctomapServer::OctomapServer(const ros::NodeHandle private_nh_, const ros::NodeH
   m_initConfig(true),
   use_virtual_wall_(true),
   dynamic_local_mode_(false),
+  color_as_primitive_mode_(false),
   worst_insertion_time_(0.0),
   worst_publication_time_(0.0)
 {
@@ -450,6 +451,7 @@ OctomapServer::OctomapServer(const ros::NodeHandle private_nh_, const ros::NodeH
 
   m_nh_private.param("sensor_model/max_range", m_maxRange, m_maxRange);
   m_nh_private.param("camera_initial_height", m_camera_initial_height, m_camera_initial_height);
+  m_nh_private.param("color_as_primitive_mode", color_as_primitive_mode_, color_as_primitive_mode_);
 
   m_nh_private.param("resolution", m_res, m_res);
   m_nh_private.param("sensor_model/hit", probHit, 0.7);
@@ -1396,9 +1398,10 @@ void OctomapServer::publishAll(const ros::Time& rostime){
   if (publishBinaryMap)
     publishBinaryOctoMap(rostime);
 
-  if (publishFullMap)
+  if (publishFullMap && !color_as_primitive_mode_)
     publishFullOctoMap(rostime);
-
+  else if(publishFullMap && color_as_primitive_mode_)
+    publishPrimitiveOctoMap(rostime); // to visualize the embeded primitives, use a common color channel.
 
   double total_elapsed = (ros::WallTime::now() - startTime).toSec();
   if(total_elapsed > worst_publication_time_)
@@ -1546,6 +1549,36 @@ void OctomapServer::publishFullOctoMap(const ros::Time& rostime) const{
 
 }
 
+void OctomapServer::publishPrimitiveOctoMap(const ros::Time &rostime)
+{
+  // ROS_WARN("publishPrimitiveOctoMap");
+  Octomap map;
+  map.header.frame_id = m_worldFrameId;
+  map.header.stamp = rostime;
+
+  change_color_as_primitive(m_octree);
+
+  if (octomap_msgs::fullMapToMsg(*m_octree, map))
+    m_fullMapPub.publish(map);
+  else
+    ROS_ERROR("Error serializing OctoMap");
+}
+
+void OctomapServer::change_color_as_primitive(OctomapServer::OcTreeT* &octree_ptr)
+{
+  // ROS_WARN("change_color_as_primitive");
+  for (OctomapServer::OcTreeT::iterator it = octree_ptr->begin(octree_ptr->getTreeDepth()), end = octree_ptr->end(); it != end; ++it)
+  {
+    if(octree_ptr->isNodeOccupied(*it) && it->hasPrimitive())
+    {
+      uint8_t r, g, b;
+      r = static_cast<uint8_t>(255 * (sin(float(it->getPrimitive())))); // to avoid 0 div, add 1 for the enum value.
+      g = static_cast<uint8_t>(255 * (cos(float(it->getPrimitive()))));
+      b = static_cast<uint8_t>(255 * (sin(float(it->getPrimitive()) + 1.0)));
+      it->setColor(r, g, b);
+    }
+  }
+}
 
 void OctomapServer::filterGroundPlane(const PCLPointCloud& pc, PCLPointCloud& ground, PCLPointCloud& nonground) const{
   ground.header = pc.header;
