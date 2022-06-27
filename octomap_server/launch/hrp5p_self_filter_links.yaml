@@ -1,0 +1,37 @@
+self_see_links:
+  - name: Larm_Link5
+    padding: .03
+    scale: 1.0
+  - name: Larm_Link6
+    padding: .03
+    scale: 1.0
+  - name: Lhand_Link0_Plan2
+    padding: .03
+    scale: 1.0
+  - name: Lindex_Link0
+    padding: .03
+    scale: 1.0
+  - name: Lindex_Link1
+    padding: .03
+    scale: 1.0
+  - name: Lindex_Link2
+    padding: .03
+    scale: 1.0
+  - name: Lthumb_Link0
+    padding: .03
+    scale: 1.0
+  - name: Lthumb_Link1
+    padding: .03
+    scale: 1.0
+  - name: Lthumb_Link2
+    padding: .03
+    scale: 1.0
+  - name: Lmiddle_Link0
+    padding: .03
+    scale: 1.0
+  - name: Lmiddle_Link1
+    padding: .03
+    scale: 1.0
+  - name: Lmiddle_Link2
+    padding: .03
+    scale: 1.0
