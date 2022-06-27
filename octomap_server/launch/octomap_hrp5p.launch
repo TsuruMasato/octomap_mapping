@@ -5,7 +5,7 @@ Licensed under the MIT License.
 
 <launch>
   <node pkg="octomap_server" type="octomap_server_node" name="octomap_server_node" output="screen">
-    <remap from="cloud_in" to="/multisense/organized_image_points2_color"/>
+    <remap from="cloud_in" to="/self_filtered_cloud"/>
     <param name="max_depth" type="int" value="16"/>
     <param name="frame_id" type="string" value="choreonoid_origin"/>
     <param name="resolution" type="double" value="0.05"/>
@@ -18,5 +18,13 @@ Licensed under the MIT License.
   </node>
 
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(find octomap_server)/launch/rviz_octomap_hrp5p.rviz"/>
+
+  <node pkg="robot_self_filter" type="self_filter" name="robot_self_filter" output="screen">
+    <remap from="cloud_in" to="/multisense/organized_image_points2_color"/>
+    <remap from="cloud_out" to="/self_filtered_cloud" />
+    <param name="sensor_frame" type="string" value="left_camera_optical_frame"/>
+    <param name="use_rgb" type="bool" value="true"/>
+    <rosparam command="load" file="$(find octomap_server)/launch/hrp5p_self_filter_links.yaml"/>
+  </node>
 
 </launch>
