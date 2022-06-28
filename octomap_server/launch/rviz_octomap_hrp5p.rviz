@@ -57,25 +57,361 @@ Visualization Manager:
       Enabled: true
       Links:
         All Links Enabled: true
+        Body:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Chest_Link0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Chest_Link1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Chest_Link2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
         Expand Joint Details: false
         Expand Link Details: false
         Expand Tree: false
+        Head_Link0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Head_Link1_Plan2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Larm_Link0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Larm_Link1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Larm_Link2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Larm_Link3:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Larm_Link4:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Larm_Link5:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Larm_Link6:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Lhand_Link0_Plan2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Lindex_Link0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Lindex_Link1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Lindex_Link2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
         Link Tree Style: Links in Alphabetic Order
-        camera_base:
+        Lleg_Link0:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        camera_body:
+        Lleg_Link1:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        camera_visor:
+        Lleg_Link2:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
+        Lleg_Link3:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Lleg_Link4:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Lleg_Link5:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Lmiddle_Link0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Lmiddle_Link1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Lmiddle_Link2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Lscap_Link0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Lthumb_Link0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Lthumb_Link1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Lthumb_Link2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rarm_Link0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rarm_Link1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rarm_Link2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rarm_Link3:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rarm_Link4:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rarm_Link5:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rarm_Link6:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rhand_Link0_Plan2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rindex_Link0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rindex_Link1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rindex_Link2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rleg_Link0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rleg_Link1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rleg_Link2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rleg_Link3:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rleg_Link4:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rleg_Link5:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rmiddle_Link0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rmiddle_Link1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rmiddle_Link2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rscap_Link0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rthumb_Link0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rthumb_Link1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        Rthumb_Link2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        azure_depth_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        head_end_coords:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        head_hokuyo_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        head_root:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hokuyo_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        larm_end_coords:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_camera_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        lleg_end_coords:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        motor:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        rarm_end_coords:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        realsense_aligned_depth_to_color_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        realsense_color_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        realsense_color_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        realsense_depth_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        realsense_depth_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        realsense_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_camera_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        rleg_end_coords:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        spindle:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        torso_end_coords:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
       Name: RobotModel
       Robot Description: robot_description
       TF Prefix: ""
@@ -403,7 +739,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: RGB8
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
@@ -414,11 +750,11 @@ Visualization Manager:
       Size (Pixels): 3
       Size (m): 0.009999999776482582
       Style: Flat Squares
-      Topic: /multisense/organized_image_points2_color
+      Topic: /self_filtered_cloud
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -431,7 +767,7 @@ Visualization Manager:
       Color: 255; 170; 0
       Color Transformer: RGB8
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
@@ -446,16 +782,16 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Class: octomap_rviz_plugin/ColorOccupancyGrid
-      Enabled: false
+      Enabled: true
       Max. Height Display: 3.4028234663852886e+38
       Max. Octree Depth: 16
       Min. Height Display: -3.4028234663852886e+38
       Name: ColorOccupancyGrid
       Octomap Topic: /octomap_full
       Queue Size: 5
-      Value: false
+      Value: true
       Voxel Alpha: 1
       Voxel Coloring: Cell Color
       Voxel Rendering: Occupied Voxels
@@ -464,10 +800,7 @@ Visualization Manager:
       Marker Topic: /normal_vector_array
       Name: MarkerArray
       Namespaces:
-        floor_plane: true
-        normal_vectors: true
-        plane_bound: true
-        wall_plane: true
+        {}
       Queue Size: 100
       Value: true
   Enabled: true
@@ -498,25 +831,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 5.734017848968506
+      Distance: 3.8513035774230957
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.8641989231109619
-        Y: 0.93682861328125
-        Z: -0.0173809677362442
+        X: -0.8333751559257507
+        Y: 0.7986827492713928
+        Z: 0.30495381355285645
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5398005247116089
+      Pitch: 0.43980079889297485
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 1.957276701927185
+      Yaw: 1.9972878694534302
     Saved: ~
 Window Geometry:
   Displays:

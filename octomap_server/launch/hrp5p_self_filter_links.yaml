@@ -35,3 +35,42 @@ self_see_links:
   - name: Lmiddle_Link2
     padding: .03
     scale: 1.0
+  - name: Rarm_Link5
+    padding: .03
+    scale: 1.0
+  - name: Rarm_Link6
+    padding: .03
+    scale: 1.0
+  - name: Rhand_Link0_Plan2
+    padding: .03
+    scale: 1.0
+  - name: Rindex_Link0
+    padding: .03
+    scale: 1.0
+  - name: Rindex_Link1
+    padding: .03
+    scale: 1.0
+  - name: Rindex_Link2
+    padding: .03
+    scale: 1.0
+  - name: Rthumb_Link0
+    padding: .03
+    scale: 1.0
+  - name: Rthumb_Link1
+    padding: .03
+    scale: 1.0
+  - name: Rthumb_Link2
+    padding: .03
+    scale: 1.0
+  - name: Rmiddle_Link0
+    padding: .03
+    scale: 1.0
+  - name: Rmiddle_Link1
+    padding: .03
+    scale: 1.0
+  - name: Rmiddle_Link2
+    padding: .03
+    scale: 1.0
+  - name: Chest_Link2
+    padding: 0.01
+    scale: 0.05
