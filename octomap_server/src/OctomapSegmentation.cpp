@@ -433,7 +433,7 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
     chull.setDimension(3);
     chull.reconstruct(*cloud_hull, cloud_vertices);
 
-    if(second_principal_component > 1.0 && second_principal_component > third_principal_component * 10.0)
+    if(second_principal_component > 2.0 && second_principal_component > third_principal_component * 10.0)
     {
       // this cluster has a certain x-y area, and it's very thin : Plane
       if(abs(third_eigen_vector.z()) < 0.5f)
@@ -452,14 +452,14 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
         ROS_INFO("big floor or stair");
         // TODO: should I detect the height, to destingish ceiling?
         if (target_cloud->begin()->z > 0.5f && target_cloud->end()->z > 0.5f)
-        { // ceiling
+        { // if it's at high position, ceiling
           for (size_t i = 0; i < target_cloud->size(); i++)
           {
             private_octomap_->averageNodePrimitive(target_cloud->at(i).x, target_cloud->at(i).y, target_cloud->at(i).z, ExOcTreeNode::ShapePrimitive::CEILING);
           }
         }
         else
-        {
+        { // if not so high, a steppable horizontal plane.
           for (size_t i = 0; i < target_cloud->size(); i++)
           {
             private_octomap_->averageNodePrimitive(target_cloud->at(i).x, target_cloud->at(i).y, target_cloud->at(i).z, ExOcTreeNode::ShapePrimitive::STEP);
@@ -486,12 +486,17 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
       }
       else if(abs(first_eigen_vector.z()) > 0.3)
       {
-        ROS_WARN("hand-rail or some vertical stick");
+        ROS_WARN("hand-rail or some vertical stick");        
         for (size_t i = 0; i < target_cloud->size(); i++)
         {
           private_octomap_->averageNodePrimitive(target_cloud->at(i).x, target_cloud->at(i).y, target_cloud->at(i).z, ExOcTreeNode::ShapePrimitive::HANDRAIL);
         }
         add_handrail_marker(pca, marker_id, marker_array, frame_id_);
+        /* // not good accuracy. 
+        pcl::ModelCoefficients ransac_result_coeff;
+        if(ransac_cylinder_alignment(target_cloud, ransac_result_coeff))
+          add_handrail_marker(ransac_result_coeff, marker_id, marker_array, frame_id_);
+        */
         std::vector<uint8_t> color{180, 50, 255};
         add_line_marker(cloud_hull, cloud_vertices, color, marker_id, marker_array, frame_id_);
       }
@@ -845,6 +850,56 @@ void OctomapSegmentation::add_handrail_marker(pcl::PCA<PCLPoint> &pca,
   marker_array.markers.push_back(wall_plane_marker);
 }
 
+void OctomapSegmentation::add_handrail_marker(pcl::ModelCoefficients cylinder_coefficient,
+                                              int &marker_id,
+                                              visualization_msgs::MarkerArray &marker_array,
+                                              const std::string &frame_id)
+{
+  visualization_msgs::Marker marker;
+  marker.lifetime = ros::Duration(1.5);
+  marker.header.frame_id = frame_id;
+  marker.ns = "normal_vectors";
+  marker.type = visualization_msgs::Marker::CYLINDER;
+  marker.scale.x = cylinder_coefficient.values.at(6); // length:40cm
+  marker.scale.y = cylinder_coefficient.values.at(6); // width of the allow
+  marker.scale.z = 0.6; // width of the allow
+
+  Eigen::Vector3f center_position;
+  center_position << cylinder_coefficient.values.at(0), cylinder_coefficient.values.at(1), cylinder_coefficient.values.at(2);
+  marker.pose.position.x = center_position.x();
+  marker.pose.position.y = center_position.y();
+  marker.pose.position.z = center_position.z();
+
+  auto q_cylinder = tf::createQuaternionFromRPY(cylinder_coefficient.values.at(3), cylinder_coefficient.values.at(4), cylinder_coefficient.values.at(5));
+  
+  /* visualize arrow only with the 3rd Eigen Vector, because it is the plane normal vector.*/
+  marker.id = marker_id++;
+  marker.pose.orientation.x = q_cylinder.x();
+  marker.pose.orientation.y = q_cylinder.y();
+  marker.pose.orientation.z = q_cylinder.z();
+  marker.pose.orientation.w = q_cylinder.w();
+  marker.color.r = 1.0;
+  marker.color.g = 0.3;
+  marker.color.b = 0.8;
+  marker.color.a = 1.0;
+  marker_array.markers.push_back(marker);
+
+  // text
+  marker.id = marker_id++;
+  marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+  marker.pose.position = convert_eigen_to_geomsg(center_position);
+  marker.scale.z = 0.13;
+  marker.color.b = 0.9;
+  marker.color.g = 0.9;
+  marker.color.r = 0.9;
+  marker.color.a = 1.0;
+  char plane_equation[30];
+  sprintf(plane_equation, "(%.2f,%.2f,%.2f)", center_position.x(), center_position.y(), center_position.z());
+  marker.text = "handrail_cylinder\n" + std::string(plane_equation);
+
+  marker_array.markers.push_back(marker);
+}
+
 void OctomapSegmentation::add_cylinder_marker(pcl::PCA<PCLPoint> &pca, int &marker_id, visualization_msgs::MarkerArray &marker_array, const std::string &frame_id)
 {
   visualization_msgs::Marker marker;
@@ -906,6 +961,56 @@ bool OctomapSegmentation::ransac_wall_detection(std::vector<pcl::PointCloud<pcl:
   {
 
   }
+  return true;
+}
+
+bool OctomapSegmentation::ransac_cylinder_alignment(pcl::PointCloud<OctomapServer::PCLPoint>::Ptr &input_cloud, pcl::ModelCoefficients &output_coefficients)
+{
+  pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+  pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+  // Create the segmentation object
+  pcl::SACSegmentationFromNormals<pcl::PointXYZRGBNormal, pcl::Normal> seg;
+  pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+  normals->header = input_cloud->header;
+  for (size_t i = 0; i < input_cloud->size(); i++)
+  {
+    // pcl::Normal temp(input_cloud->at(i).normal);
+    pcl::Normal temp(input_cloud->at(i).normal_x, input_cloud->at(i).normal_y, input_cloud->at(i).normal_z);
+    normals->points.push_back(temp);
+  }
+
+  // Optional
+  seg.setOptimizeCoefficients(true);
+  // Mandatory
+  seg.setModelType(pcl::SACMODEL_CYLINDER);
+  seg.setMethodType(pcl::SAC_RANSAC);
+  seg.setNormalDistanceWeight(0.1);
+  seg.setMaxIterations(10000);
+  seg.setDistanceThreshold(0.05);
+  seg.setRadiusLimits(0, 0.2);
+  // seg.setAxis(axis);
+  // seg.setEpsAngle(0.05);
+  seg.setInputCloud(input_cloud);
+  seg.setInputNormals(normals);
+  seg.segment(*inliers, *coefficients);
+  // ROS_INFO("plane size : %d", inliers->indices.size());
+
+  if (inliers->indices.size() < 10)
+  {
+    ROS_ERROR("[OctomapSegmentation::ransac_cylinder] failed to align a cylinder model");
+    output_coefficients.header.frame_id = "FAIL";
+    return false;
+  }
+
+  // pcl::ExtractIndices<pcl::PointXYZRGBNormal> extract;
+  // extract.setInputCloud(input_cloud);
+  // extract.setIndices(inliers);
+  // extract.setNegative(false);
+  // extract.filter(*output_cloud);
+  ROS_INFO("[OctomapSegmentation::ransac_cylinder] succeed in aligning a cylinder model");
+  output_coefficients = *coefficients;
+  std::cerr << "Cylinder coefficients: " << output_coefficients << std::endl;
+  // output_coefficients.values.
   return true;
 }
 
