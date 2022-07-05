@@ -29,7 +29,10 @@
 #include <pcl/filters/passthrough.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/common/pca.h>
-#include <pcl/surface/convex_hull.h>>
+#include <pcl/surface/convex_hull.h>
+#include <pcl/surface/concave_hull.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/features/fpfh.h>
 
 #include <tf/transform_listener.h>
 #include <tf/message_filter.h>
@@ -71,6 +74,8 @@ public:
   bool PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &input_clusters, visualization_msgs::MarkerArray &marker_array, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &cubic_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &plane_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &sylinder_clusters, std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &the_others);
   bool ransac_wall_detection(std::vector<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> &input_clusters);
   bool ransac_cylinder_alignment(pcl::PointCloud<OctomapServer::PCLPoint>::Ptr &input_cloud, pcl::ModelCoefficients &output_coefficients);
+  bool project_points_onto_RANSAC_plane(pcl::PointCloud<OctomapServer::PCLPoint>::Ptr &input_cloud, pcl::PointCloud<OctomapServer::PCLPoint>::Ptr &projected_cloud);
+  void extract_corners(pcl::PointCloud<OctomapServer::PCLPoint>::Ptr &cloud);
   void add_wall_marker(pcl::PCA<PCLPoint> &pca, int &marker_id, visualization_msgs::MarkerArray &marker_array, const std::string &frame_id);
   void add_floor_marker(pcl::PCA<PCLPoint> &pca, int &marker_id, visualization_msgs::MarkerArray &marker_array, const std::string &frame_id);
   void add_step_marker(pcl::PCA<PCLPoint> &pca, int &marker_id, visualization_msgs::MarkerArray &marker_array, const std::string &frame_id);

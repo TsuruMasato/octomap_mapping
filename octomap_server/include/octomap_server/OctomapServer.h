@@ -60,7 +60,7 @@
 #include <pcl/filters/extract_indices.h>
 #include <pcl/filters/passthrough.h>
 #include <pcl_conversions/pcl_conversions.h>
-
+#include <pcl/filters/project_inliers.h>
 
 #include <tf/transform_listener.h>
 #include <tf/message_filter.h>
@@ -171,6 +171,7 @@ public:
   inline ShapePrimitive getPrimitive() const { return shape_primitive; }
   inline void setPrimitive(ShapePrimitive p) { shape_primitive = p; has_primitive = true;}
   inline bool hasPrimitive() const { return has_primitive; }
+  inline bool hasNormalVector() const { return has_normal_vector; }
   inline void averagePrimitive(ShapePrimitive p)
   {
     latest_10_shape_primitives.push_back(p);
@@ -210,17 +211,25 @@ public:
 
   inline void setNormalVector(Eigen::Vector3d n_vector_input)
   {
-    normal_vector = n_vector_input;
+    if (abs(n_vector_input.x()) <= 1.0f && abs(n_vector_input.y()) <= 1.0f && abs(n_vector_input.z()) <= 1.0f)
+    {
+      normal_vector = n_vector_input;
+      has_normal_vector = true;
+    }
   }
 
   inline void setNormalVector(double input_x, double input_y, double input_z)
   {
-    normal_vector << input_x, input_y, input_z;
+    if (abs(input_x) <= 1.0f && abs(input_y) <= 1.0f && abs(input_z) <= 1.0f)
+    {
+      normal_vector << input_x, input_y, input_z;
+      has_normal_vector = true;
+    }
   }
 
   inline bool isNormalVectorSet() const
   {
-    return ((normal_vector.x() != 0) || (normal_vector.y() != 0) || (normal_vector.z() != 0));
+    return ((normal_vector.x() != 0) || (normal_vector.y() != 0) || (normal_vector.z() != 0) || has_normal_vector);
   }
 
   inline bool isAffordanceReady() const { return affordance_ready; }
@@ -255,6 +264,7 @@ protected:
   bool has_primitive = false;
   std::deque<ShapePrimitive> latest_10_shape_primitives;
   Eigen::Vector3d normal_vector{0.0, 0.0, 0.0};
+  bool has_normal_vector = false;
   bool affordance_ready = false;
   Eigen::Vector3d approach_direction;
   ContactType contact_type = ContactType::NOT_AVAILABLE;
@@ -449,7 +459,9 @@ protected:
   void publishBinaryOctoMap(const ros::Time& rostime = ros::Time::now()) const;
   void publishFullOctoMap(const ros::Time& rostime = ros::Time::now()) const;
   void publishPrimitiveOctoMap(const ros::Time &rostime);
+  void publishNormalVectorOctoMap(const ros::Time &rostime);
   void change_color_as_primitive(OctomapServer::OcTreeT* &octree_ptr);
+  void change_color_as_normal_vector(OctomapServer::OcTreeT *&octree_ptr);
   virtual void publishAll(const ros::Time &rostime = ros::Time::now());
 
   /**
@@ -600,6 +612,7 @@ protected:
   visualization_msgs::MarkerArray marker_array_;
 
   bool color_as_primitive_mode_;
+  bool color_as_normal_vector_mode_;
 
   bool subtract_point_cloud(PCLPointCloud::Ptr point_cloud);
   };

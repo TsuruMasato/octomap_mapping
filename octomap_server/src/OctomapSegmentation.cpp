@@ -430,12 +430,20 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
     std::vector<pcl::Vertices> cloud_vertices;
     pcl::ConvexHull<PCLPoint> chull;
     chull.setInputCloud(target_cloud);
+    // chull.setAlpha(0.07);
     chull.setDimension(3);
     chull.reconstruct(*cloud_hull, cloud_vertices);
 
     if(second_principal_component > 2.0 && second_principal_component > third_principal_component * 10.0)
     {
       // this cluster has a certain x-y area, and it's very thin : Plane
+      pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr projected_cloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+      project_points_onto_RANSAC_plane(target_cloud, projected_cloud);
+      // extract_corners(projected_cloud);
+      // chull.setInputCloud(projected_cloud);
+      // chull.setAlpha(0.07);
+      // chull.setDimension(3);
+      // chull.reconstruct(*cloud_hull, cloud_vertices);
       if(abs(third_eigen_vector.z()) < 0.5f)
       {
         ROS_INFO("wall");
@@ -519,6 +527,70 @@ bool OctomapSegmentation::PCA_classify(std::vector<pcl::PointCloud<pcl::PointXYZ
   }
 
   return true;
+}
+
+bool OctomapSegmentation::project_points_onto_RANSAC_plane(pcl::PointCloud<OctomapServer::PCLPoint>::Ptr &input_cloud, pcl::PointCloud<OctomapServer::PCLPoint>::Ptr &projected_cloud)
+{
+  // this function can project the all cluster points onto one 2D plane in 3D space. For better visualization, I tried to draw edges of plane, but still not be achieved.
+  pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+  pcl::SACSegmentation<OctomapServer::PCLPoint> seg;
+  seg.setInputCloud(input_cloud);
+  seg.setModelType(pcl::SACMODEL_PLANE);
+  seg.setMethodType(pcl::SAC_RANSAC);
+  seg.setDistanceThreshold(0.01);
+  seg.setOptimizeCoefficients(true);
+  pcl::PointIndices::Ptr inlierIndices(new pcl::PointIndices);
+  seg.segment(*inlierIndices, *coefficients);
+
+  if (inlierIndices->indices.size() == 0)
+  {
+    ROS_ERROR("Could not find a plane in the scene.");
+    return false;
+  }
+
+  pcl::PointCloud<OctomapServer::PCLPoint>::Ptr plane_cloud(new pcl::PointCloud<OctomapServer::PCLPoint>);
+  pcl::ExtractIndices<OctomapServer::PCLPoint> extract;
+  extract.setInputCloud(input_cloud);
+  extract.setIndices(inlierIndices);
+  extract.filter(*plane_cloud);
+
+  /* projection */
+  pcl::ProjectInliers<OctomapServer::PCLPoint> projection;
+  projection.setModelType(pcl::SACMODEL_PLANE);
+  projection.setInputCloud(plane_cloud);
+  projection.setModelCoefficients(coefficients);
+  projection.filter(*projected_cloud);
+
+  return true;
+}
+
+void OctomapSegmentation::extract_corners(pcl::PointCloud<OctomapServer::PCLPoint>::Ptr &cloud)
+{
+  // To detect edges of a plane, I wanted to extract vertices which has edge feature. but the number of points is not reduced.
+  ROS_WARN("size of input cloud : %d", cloud->size());
+
+  // Estimate the normals.　法線の推定
+  pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+  pcl::PointCloud<pcl::FPFHSignature33>::Ptr descriptors(new pcl::PointCloud<pcl::FPFHSignature33>());
+  pcl::NormalEstimation<OctomapServer::PCLPoint, pcl::Normal> normalEstimation;
+  normalEstimation.setInputCloud(cloud);
+  normalEstimation.setRadiusSearch(0.05);
+  pcl::search::KdTree<OctomapServer::PCLPoint>::Ptr kdtree(new pcl::search::KdTree<OctomapServer::PCLPoint>);
+  normalEstimation.setSearchMethod(kdtree);
+  normalEstimation.compute(*normals);
+
+  // FPFH estimation object.　　　FPFH推定のためのオブジェクト
+  pcl::FPFHEstimation<OctomapServer::PCLPoint, pcl::Normal, pcl::FPFHSignature33> fpfh;
+  fpfh.setInputCloud(cloud);
+  fpfh.setInputNormals(normals);
+  fpfh.setSearchMethod(kdtree);
+  // Search radius, to look for neighbors. Note: the value given here has to be
+  // larger than the radius used to estimate the normals.
+  // 近接点を探すための探索半径。注意: ここでの値は法線推定のため半径よりも大きくなければならない
+  fpfh.setRadiusSearch(0.1);
+
+  fpfh.compute(*descriptors);
+  ROS_WARN("size of points : %d", descriptors->size());
 }
 
 void OctomapSegmentation::add_wall_marker(pcl::PCA<PCLPoint> &pca,
