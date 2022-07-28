@@ -650,26 +650,26 @@ void OctomapSegmentation::add_wall_marker(pcl::PCA<PCLPoint> &pca,
   
   marker_array.markers.push_back(marker);
   
-  visualization_msgs::Marker wall_plane_marker;
-  wall_plane_marker.header.frame_id = frame_id_;
-  wall_plane_marker.ns = "wall_plane";
-  wall_plane_marker.type = visualization_msgs::Marker::CUBE;
-  wall_plane_marker.id = marker_id++;
-  wall_plane_marker.pose.position.x = center_position.x();
-  wall_plane_marker.pose.position.y = center_position.y();
-  wall_plane_marker.pose.position.z = center_position.z();
-  wall_plane_marker.pose.orientation.x = qz.x();
-  wall_plane_marker.pose.orientation.y = qz.y();
-  wall_plane_marker.pose.orientation.z = qz.z();
-  wall_plane_marker.pose.orientation.w = qz.w();
-  wall_plane_marker.scale.x = 0.001f;
-  wall_plane_marker.scale.y = eigen_values.y() * 0.01; // plane width
-  wall_plane_marker.scale.z = eigen_values.x() * 0.01; // plane height, the largest component in 3 eigen values
-  wall_plane_marker.color.r = 1.0;
-  wall_plane_marker.color.g = 0.7;
-  wall_plane_marker.color.b = 0.7;
-  wall_plane_marker.color.a = 1.0;
-  marker_array.markers.push_back(wall_plane_marker);
+  // visualization_msgs::Marker wall_plane_marker;
+  // wall_plane_marker.header.frame_id = frame_id_;
+  // wall_plane_marker.ns = "wall_plane";
+  // wall_plane_marker.type = visualization_msgs::Marker::CUBE;
+  // wall_plane_marker.id = marker_id++;
+  // wall_plane_marker.pose.position.x = center_position.x();
+  // wall_plane_marker.pose.position.y = center_position.y();
+  // wall_plane_marker.pose.position.z = center_position.z();
+  // wall_plane_marker.pose.orientation.x = qz.x();
+  // wall_plane_marker.pose.orientation.y = qz.y();
+  // wall_plane_marker.pose.orientation.z = qz.z();
+  // wall_plane_marker.pose.orientation.w = qz.w();
+  // wall_plane_marker.scale.x = 0.001f;
+  // wall_plane_marker.scale.y = eigen_values.y() * 0.01; // plane width
+  // wall_plane_marker.scale.z = eigen_values.x() * 0.01; // plane height, the largest component in 3 eigen values
+  // wall_plane_marker.color.r = 1.0;
+  // wall_plane_marker.color.g = 0.7;
+  // wall_plane_marker.color.b = 0.7;
+  // wall_plane_marker.color.a = 1.0;
+  // marker_array.markers.push_back(wall_plane_marker);
   
 }
 
@@ -734,26 +734,26 @@ void OctomapSegmentation::add_floor_marker(pcl::PCA<PCLPoint> &pca,
 
   marker_array.markers.push_back(marker);
 
-  visualization_msgs::Marker wall_plane_marker;
-  wall_plane_marker.header.frame_id = frame_id_;
-  wall_plane_marker.ns = "wall_plane";
-  wall_plane_marker.type = visualization_msgs::Marker::CUBE;
-  wall_plane_marker.id = marker_id++;
-  wall_plane_marker.pose.position.x = center_position.x();
-  wall_plane_marker.pose.position.y = center_position.y();
-  wall_plane_marker.pose.position.z = center_position.z();
-  wall_plane_marker.pose.orientation.x = qz.x();
-  wall_plane_marker.pose.orientation.y = qz.y();
-  wall_plane_marker.pose.orientation.z = qz.z();
-  wall_plane_marker.pose.orientation.w = qz.w();
-  wall_plane_marker.scale.x = 0.001f;
-  wall_plane_marker.scale.y = eigen_values.y() * 0.01; // plane width
-  wall_plane_marker.scale.z = eigen_values.x() * 0.01; // plane height, the largest component in 3 eigen values
-  wall_plane_marker.color.r = 1.0;
-  wall_plane_marker.color.g = 0.7;
-  wall_plane_marker.color.b = 0.7;
-  wall_plane_marker.color.a = 1.0;
-  marker_array.markers.push_back(wall_plane_marker);
+  // visualization_msgs::Marker wall_plane_marker;
+  // wall_plane_marker.header.frame_id = frame_id_;
+  // wall_plane_marker.ns = "wall_plane";
+  // wall_plane_marker.type = visualization_msgs::Marker::CUBE;
+  // wall_plane_marker.id = marker_id++;
+  // wall_plane_marker.pose.position.x = center_position.x();
+  // wall_plane_marker.pose.position.y = center_position.y();
+  // wall_plane_marker.pose.position.z = center_position.z();
+  // wall_plane_marker.pose.orientation.x = qz.x();
+  // wall_plane_marker.pose.orientation.y = qz.y();
+  // wall_plane_marker.pose.orientation.z = qz.z();
+  // wall_plane_marker.pose.orientation.w = qz.w();
+  // wall_plane_marker.scale.x = 0.001f;
+  // wall_plane_marker.scale.y = eigen_values.y() * 0.01; // plane width
+  // wall_plane_marker.scale.z = eigen_values.x() * 0.01; // plane height, the largest component in 3 eigen values
+  // wall_plane_marker.color.r = 1.0;
+  // wall_plane_marker.color.g = 0.7;
+  // wall_plane_marker.color.b = 0.7;
+  // wall_plane_marker.color.a = 1.0;
+  // marker_array.markers.push_back(wall_plane_marker);
 }
 
 void OctomapSegmentation::add_step_marker(pcl::PCA<PCLPoint> &pca,
@@ -817,26 +817,26 @@ void OctomapSegmentation::add_step_marker(pcl::PCA<PCLPoint> &pca,
 
   marker_array.markers.push_back(marker);
 
-  visualization_msgs::Marker wall_plane_marker;
-  wall_plane_marker.header.frame_id = frame_id_;
-  wall_plane_marker.ns = "wall_plane";
-  wall_plane_marker.type = visualization_msgs::Marker::CUBE;
-  wall_plane_marker.id = marker_id++;
-  wall_plane_marker.pose.position.x = center_position.x();
-  wall_plane_marker.pose.position.y = center_position.y();
-  wall_plane_marker.pose.position.z = center_position.z();
-  wall_plane_marker.pose.orientation.x = qz.x();
-  wall_plane_marker.pose.orientation.y = qz.y();
-  wall_plane_marker.pose.orientation.z = qz.z();
-  wall_plane_marker.pose.orientation.w = qz.w();
-  wall_plane_marker.scale.x = 0.001f;
-  wall_plane_marker.scale.y = eigen_values.y() * 0.01; // plane width
-  wall_plane_marker.scale.z = eigen_values.x() * 0.01; // plane height, the largest component in 3 eigen values
-  wall_plane_marker.color.r = 1.0;
-  wall_plane_marker.color.g = 0.7;
-  wall_plane_marker.color.b = 0.7;
-  wall_plane_marker.color.a = 1.0;
-  marker_array.markers.push_back(wall_plane_marker);
+  // visualization_msgs::Marker wall_plane_marker;
+  // wall_plane_marker.header.frame_id = frame_id_;
+  // wall_plane_marker.ns = "wall_plane";
+  // wall_plane_marker.type = visualization_msgs::Marker::CUBE;
+  // wall_plane_marker.id = marker_id++;
+  // wall_plane_marker.pose.position.x = center_position.x();
+  // wall_plane_marker.pose.position.y = center_position.y();
+  // wall_plane_marker.pose.position.z = center_position.z();
+  // wall_plane_marker.pose.orientation.x = qz.x();
+  // wall_plane_marker.pose.orientation.y = qz.y();
+  // wall_plane_marker.pose.orientation.z = qz.z();
+  // wall_plane_marker.pose.orientation.w = qz.w();
+  // wall_plane_marker.scale.x = 0.001f;
+  // wall_plane_marker.scale.y = eigen_values.y() * 0.01; // plane width
+  // wall_plane_marker.scale.z = eigen_values.x() * 0.01; // plane height, the largest component in 3 eigen values
+  // wall_plane_marker.color.r = 1.0;
+  // wall_plane_marker.color.g = 0.7;
+  // wall_plane_marker.color.b = 0.7;
+  // wall_plane_marker.color.a = 1.0;
+  // marker_array.markers.push_back(wall_plane_marker);
 }
 
 void OctomapSegmentation::add_handrail_marker(pcl::PCA<PCLPoint> &pca,
@@ -900,26 +900,26 @@ void OctomapSegmentation::add_handrail_marker(pcl::PCA<PCLPoint> &pca,
 
   marker_array.markers.push_back(marker);
 
-  visualization_msgs::Marker wall_plane_marker;
-  wall_plane_marker.header.frame_id = frame_id_;
-  wall_plane_marker.ns = "wall_plane";
-  wall_plane_marker.type = visualization_msgs::Marker::CUBE;
-  wall_plane_marker.id = marker_id++;
-  wall_plane_marker.pose.position.x = center_position.x();
-  wall_plane_marker.pose.position.y = center_position.y();
-  wall_plane_marker.pose.position.z = center_position.z();
-  wall_plane_marker.pose.orientation.x = qz.x();
-  wall_plane_marker.pose.orientation.y = qz.y();
-  wall_plane_marker.pose.orientation.z = qz.z();
-  wall_plane_marker.pose.orientation.w = qz.w();
-  wall_plane_marker.scale.x = 0.001f;
-  wall_plane_marker.scale.y = eigen_values.y() * 0.01; // plane width
-  wall_plane_marker.scale.z = eigen_values.x() * 0.01; // plane height, the largest component in 3 eigen values
-  wall_plane_marker.color.r = 1.0;
-  wall_plane_marker.color.g = 0.7;
-  wall_plane_marker.color.b = 0.7;
-  wall_plane_marker.color.a = 1.0;
-  marker_array.markers.push_back(wall_plane_marker);
+  // visualization_msgs::Marker wall_plane_marker;
+  // wall_plane_marker.header.frame_id = frame_id_;
+  // wall_plane_marker.ns = "wall_plane";
+  // wall_plane_marker.type = visualization_msgs::Marker::CUBE;
+  // wall_plane_marker.id = marker_id++;
+  // wall_plane_marker.pose.position.x = center_position.x();
+  // wall_plane_marker.pose.position.y = center_position.y();
+  // wall_plane_marker.pose.position.z = center_position.z();
+  // wall_plane_marker.pose.orientation.x = qz.x();
+  // wall_plane_marker.pose.orientation.y = qz.y();
+  // wall_plane_marker.pose.orientation.z = qz.z();
+  // wall_plane_marker.pose.orientation.w = qz.w();
+  // wall_plane_marker.scale.x = 0.001f;
+  // wall_plane_marker.scale.y = eigen_values.y() * 0.01; // plane width
+  // wall_plane_marker.scale.z = eigen_values.x() * 0.01; // plane height, the largest component in 3 eigen values
+  // wall_plane_marker.color.r = 1.0;
+  // wall_plane_marker.color.g = 0.7;
+  // wall_plane_marker.color.b = 0.7;
+  // wall_plane_marker.color.a = 1.0;
+  // marker_array.markers.push_back(wall_plane_marker);
 }
 
 void OctomapSegmentation::add_handrail_marker(pcl::ModelCoefficients cylinder_coefficient,
