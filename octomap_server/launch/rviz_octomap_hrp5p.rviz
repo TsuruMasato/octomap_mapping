@@ -551,6 +551,180 @@ Visualization Manager:
           Value: true
         choreonoid_origin:
           Value: true
+        control/Body:
+          Value: true
+        control/Chest_Link0:
+          Value: true
+        control/Chest_Link1:
+          Value: true
+        control/Chest_Link2:
+          Value: true
+        control/Head_Link0:
+          Value: true
+        control/Head_Link1_Plan2:
+          Value: true
+        control/Larm_Link0:
+          Value: true
+        control/Larm_Link1:
+          Value: true
+        control/Larm_Link2:
+          Value: true
+        control/Larm_Link3:
+          Value: true
+        control/Larm_Link4:
+          Value: true
+        control/Larm_Link5:
+          Value: true
+        control/Larm_Link6:
+          Value: true
+        control/LeftFootForceSensor:
+          Value: true
+        control/LeftHandForceSensor:
+          Value: true
+        control/Lhand_Link0_Plan2:
+          Value: true
+        control/Lindex_Link0:
+          Value: true
+        control/Lindex_Link1:
+          Value: true
+        control/Lindex_Link2:
+          Value: true
+        control/Lleg_Link0:
+          Value: true
+        control/Lleg_Link1:
+          Value: true
+        control/Lleg_Link2:
+          Value: true
+        control/Lleg_Link3:
+          Value: true
+        control/Lleg_Link4:
+          Value: true
+        control/Lleg_Link5:
+          Value: true
+        control/Lmiddle_Link0:
+          Value: true
+        control/Lmiddle_Link1:
+          Value: true
+        control/Lmiddle_Link2:
+          Value: true
+        control/Lscap_Link0:
+          Value: true
+        control/Lthumb_Link0:
+          Value: true
+        control/Lthumb_Link1:
+          Value: true
+        control/Lthumb_Link2:
+          Value: true
+        control/Rarm_Link0:
+          Value: true
+        control/Rarm_Link1:
+          Value: true
+        control/Rarm_Link2:
+          Value: true
+        control/Rarm_Link3:
+          Value: true
+        control/Rarm_Link4:
+          Value: true
+        control/Rarm_Link5:
+          Value: true
+        control/Rarm_Link6:
+          Value: true
+        control/Rhand_Link0_Plan2:
+          Value: true
+        control/RightFootForceSensor:
+          Value: true
+        control/RightHandForceSensor:
+          Value: true
+        control/Rindex_Link0:
+          Value: true
+        control/Rindex_Link1:
+          Value: true
+        control/Rindex_Link2:
+          Value: true
+        control/Rleg_Link0:
+          Value: true
+        control/Rleg_Link1:
+          Value: true
+        control/Rleg_Link2:
+          Value: true
+        control/Rleg_Link3:
+          Value: true
+        control/Rleg_Link4:
+          Value: true
+        control/Rleg_Link5:
+          Value: true
+        control/Rmiddle_Link0:
+          Value: true
+        control/Rmiddle_Link1:
+          Value: true
+        control/Rmiddle_Link2:
+          Value: true
+        control/Rscap_Link0:
+          Value: true
+        control/Rthumb_Link0:
+          Value: true
+        control/Rthumb_Link1:
+          Value: true
+        control/Rthumb_Link2:
+          Value: true
+        control/azure_depth_frame:
+          Value: true
+        control/env_1/base_link:
+          Value: true
+        control/env_2/base_link:
+          Value: true
+        control/env_2/ground:
+          Value: true
+        control/env_2/surfaces/AllGround:
+          Value: true
+        control/head_root:
+          Value: true
+        control/left_camera_optical_frame:
+          Value: true
+        control/realsense_aligned_depth_to_color_frame:
+          Value: true
+        control/realsense_color_frame:
+          Value: true
+        control/realsense_color_optical_frame:
+          Value: true
+        control/realsense_depth_frame:
+          Value: true
+        control/realsense_depth_optical_frame:
+          Value: true
+        control/realsense_link:
+          Value: true
+        control/right_camera_optical_frame:
+          Value: true
+        control/surfaces/LForearmFront:
+          Value: true
+        control/surfaces/LeftFoot:
+          Value: true
+        control/surfaces/LeftFootCenter:
+          Value: true
+        control/surfaces/LeftHand:
+          Value: true
+        control/surfaces/LeftHandBobbin:
+          Value: true
+        control/surfaces/LeftHandSideInner:
+          Value: true
+        control/surfaces/MultiSenseCameraLeft:
+          Value: true
+        control/surfaces/MultiSenseCameraRight:
+          Value: true
+        control/surfaces/RHandBack:
+          Value: true
+        control/surfaces/RHandFront:
+          Value: true
+        control/surfaces/RightFoot:
+          Value: true
+        control/surfaces/RightFootCenter:
+          Value: true
+        control/surfaces/RightHand:
+          Value: true
+        control/surfaces/RightHandBobbin:
+          Value: true
+        control/surfaces/TopCameraRGB:
+          Value: true
         gsensor:
           Value: false
         gyrometer:
@@ -563,8 +737,6 @@ Visualization Manager:
           Value: false
         hokuyo_link:
           Value: false
-        imu_floor:
-          Value: false
         larm_end_coords:
           Value: false
         left_camera_optical_frame:
@@ -575,10 +747,186 @@ Visualization Manager:
           Value: false
         lleg_end_coords:
           Value: false
+        map:
+          Value: true
         motor:
           Value: false
         rarm_end_coords:
           Value: false
+        real/Body:
+          Value: true
+        real/Chest_Link0:
+          Value: true
+        real/Chest_Link1:
+          Value: true
+        real/Chest_Link2:
+          Value: true
+        real/Head_Link0:
+          Value: true
+        real/Head_Link1_Plan2:
+          Value: true
+        real/Larm_Link0:
+          Value: true
+        real/Larm_Link1:
+          Value: true
+        real/Larm_Link2:
+          Value: true
+        real/Larm_Link3:
+          Value: true
+        real/Larm_Link4:
+          Value: true
+        real/Larm_Link5:
+          Value: true
+        real/Larm_Link6:
+          Value: true
+        real/LeftFootForceSensor:
+          Value: true
+        real/LeftHandForceSensor:
+          Value: true
+        real/Lhand_Link0_Plan2:
+          Value: true
+        real/Lindex_Link0:
+          Value: true
+        real/Lindex_Link1:
+          Value: true
+        real/Lindex_Link2:
+          Value: true
+        real/Lleg_Link0:
+          Value: true
+        real/Lleg_Link1:
+          Value: true
+        real/Lleg_Link2:
+          Value: true
+        real/Lleg_Link3:
+          Value: true
+        real/Lleg_Link4:
+          Value: true
+        real/Lleg_Link5:
+          Value: true
+        real/Lmiddle_Link0:
+          Value: true
+        real/Lmiddle_Link1:
+          Value: true
+        real/Lmiddle_Link2:
+          Value: true
+        real/Lscap_Link0:
+          Value: true
+        real/Lthumb_Link0:
+          Value: true
+        real/Lthumb_Link1:
+          Value: true
+        real/Lthumb_Link2:
+          Value: true
+        real/Rarm_Link0:
+          Value: true
+        real/Rarm_Link1:
+          Value: true
+        real/Rarm_Link2:
+          Value: true
+        real/Rarm_Link3:
+          Value: true
+        real/Rarm_Link4:
+          Value: true
+        real/Rarm_Link5:
+          Value: true
+        real/Rarm_Link6:
+          Value: true
+        real/Rhand_Link0_Plan2:
+          Value: true
+        real/RightFootForceSensor:
+          Value: true
+        real/RightHandForceSensor:
+          Value: true
+        real/Rindex_Link0:
+          Value: true
+        real/Rindex_Link1:
+          Value: true
+        real/Rindex_Link2:
+          Value: true
+        real/Rleg_Link0:
+          Value: true
+        real/Rleg_Link1:
+          Value: true
+        real/Rleg_Link2:
+          Value: true
+        real/Rleg_Link3:
+          Value: true
+        real/Rleg_Link4:
+          Value: true
+        real/Rleg_Link5:
+          Value: true
+        real/Rmiddle_Link0:
+          Value: true
+        real/Rmiddle_Link1:
+          Value: true
+        real/Rmiddle_Link2:
+          Value: true
+        real/Rscap_Link0:
+          Value: true
+        real/Rthumb_Link0:
+          Value: true
+        real/Rthumb_Link1:
+          Value: true
+        real/Rthumb_Link2:
+          Value: true
+        real/azure_depth_frame:
+          Value: true
+        real/env_1/base_link:
+          Value: true
+        real/env_2/base_link:
+          Value: true
+        real/env_2/ground:
+          Value: true
+        real/env_2/surfaces/AllGround:
+          Value: true
+        real/head_root:
+          Value: true
+        real/left_camera_optical_frame:
+          Value: true
+        real/realsense_aligned_depth_to_color_frame:
+          Value: true
+        real/realsense_color_frame:
+          Value: true
+        real/realsense_color_optical_frame:
+          Value: true
+        real/realsense_depth_frame:
+          Value: true
+        real/realsense_depth_optical_frame:
+          Value: true
+        real/realsense_link:
+          Value: true
+        real/right_camera_optical_frame:
+          Value: true
+        real/surfaces/LForearmFront:
+          Value: true
+        real/surfaces/LeftFoot:
+          Value: true
+        real/surfaces/LeftFootCenter:
+          Value: true
+        real/surfaces/LeftHand:
+          Value: true
+        real/surfaces/LeftHandBobbin:
+          Value: true
+        real/surfaces/LeftHandSideInner:
+          Value: true
+        real/surfaces/MultiSenseCameraLeft:
+          Value: true
+        real/surfaces/MultiSenseCameraRight:
+          Value: true
+        real/surfaces/RHandBack:
+          Value: true
+        real/surfaces/RHandFront:
+          Value: true
+        real/surfaces/RightFoot:
+          Value: true
+        real/surfaces/RightFootCenter:
+          Value: true
+        real/surfaces/RightHand:
+          Value: true
+        real/surfaces/RightHandBobbin:
+          Value: true
+        real/surfaces/TopCameraRGB:
+          Value: true
         realsense_aligned_depth_to_color_frame:
           Value: false
         realsense_color_frame:
@@ -599,6 +947,8 @@ Visualization Manager:
           Value: false
         rleg_end_coords:
           Value: false
+        robot_map:
+          Value: true
         spindle:
           Value: false
         torso_end_coords:
@@ -723,8 +1073,7 @@ Visualization Manager:
           gsensor:
             {}
           gyrometer:
-            imu_floor:
-              {}
+            {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -800,7 +1149,7 @@ Visualization Manager:
       Marker Topic: /normal_vector_array
       Name: MarkerArray
       Namespaces:
-        {}
+        floor_plane: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -831,25 +1180,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 3.8513035774230957
+      Distance: 5.410804271697998
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.8333751559257507
-        Y: 0.7986827492713928
-        Z: 0.30495381355285645
+        X: 0.132658451795578
+        Y: 0.6312979459762573
+        Z: 0.9789020419120789
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.43980079889297485
+      Pitch: 0.5248007774353027
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 1.9972878694534302
+      Yaw: 1.8772879838943481
     Saved: ~
 Window Geometry:
   Displays:

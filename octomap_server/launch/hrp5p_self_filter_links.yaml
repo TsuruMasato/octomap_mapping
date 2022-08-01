@@ -1,4 +1,16 @@
 self_see_links:
+  - name: Larm_Link1
+    padding: .03
+    scale: 1.0
+  - name: Larm_Link2
+    padding: .03
+    scale: 1.0
+  - name: Larm_Link3
+    padding: .03
+    scale: 1.0
+  - name: Larm_Link4
+    padding: .03
+    scale: 1.0
   - name: Larm_Link5
     padding: .03
     scale: 1.0
@@ -33,6 +45,18 @@ self_see_links:
     padding: .03
     scale: 1.0
   - name: Lmiddle_Link2
+    padding: .03
+    scale: 1.0
+  - name: Rarm_Link1
+    padding: .03
+    scale: 1.0
+  - name: Rarm_Link2
+    padding: .03
+    scale: 1.0
+  - name: Rarm_Link3
+    padding: .03
+    scale: 1.0
+  - name: Rarm_Link4
     padding: .03
     scale: 1.0
   - name: Rarm_Link5
@@ -71,6 +95,48 @@ self_see_links:
   - name: Rmiddle_Link2
     padding: .03
     scale: 1.0
+  - name: Chest_Link0
+    padding: 0.01
+    scale: 0.05
+  - name: Chest_Link1
+    padding: 0.01
+    scale: 0.05
   - name: Chest_Link2
     padding: 0.01
     scale: 0.05
+  - name: Rleg_Link0
+    padding: .03
+    scale: 1.0
+  - name: Rleg_Link1
+    padding: .03
+    scale: 1.0
+  - name: Rleg_Link2
+    padding: .03
+    scale: 1.0
+  - name: Rleg_Link3
+    padding: .03
+    scale: 1.0
+  - name: Rleg_Link4
+    padding: .03
+    scale: 1.0
+  - name: Rleg_Link5
+    padding: .03
+    scale: 1.0
+  - name: Lleg_Link0
+    padding: .03
+    scale: 1.0
+  - name: Lleg_Link1
+    padding: .03
+    scale: 1.0
+  - name: Lleg_Link2
+    padding: .03
+    scale: 1.0
+  - name: Lleg_Link3
+    padding: .03
+    scale: 1.0
+  - name: Lleg_Link4
+    padding: .03
+    scale: 1.0
+  - name: Lleg_Link5
+    padding: .03
+    scale: 1.0
