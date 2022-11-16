@@ -56,6 +56,7 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/filters/passthrough.h>
+#include <pcl/filters/random_sample.h>
 #include <pcl_conversions/pcl_conversions.h>
 
 
@@ -70,6 +71,8 @@
 #include <octomap_ros/conversions.h>
 #include <octomap/octomap.h>
 #include <octomap/OcTreeKey.h>
+
+#include <std_msgs/Float32.h>
 
 //#define COLOR_OCTOMAP_SERVER // switch color here - easier maintenance, only maintain OctomapServer. Two targets are defined in the cmake, octomap_server_color and octomap_server. One has this defined, and the other doesn't
 
@@ -99,6 +102,7 @@ public:
   virtual bool octomapFullSrv(OctomapSrv::Request  &req, OctomapSrv::GetOctomap::Response &res);
   bool clearBBXSrv(BBXSrv::Request& req, BBXSrv::Response& resp);
   bool resetSrv(std_srvs::Empty::Request& req, std_srvs::Empty::Response& resp);
+  bool subtract_point_cloud(PCLPointCloud::Ptr &point_cloud);
 
   virtual void insertCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& cloud);
   virtual bool openFile(const std::string& filename);
@@ -206,7 +210,7 @@ protected:
   static std_msgs::ColorRGBA heightMapColor(double h);
   ros::NodeHandle m_nh;
   ros::NodeHandle m_nh_private;
-  ros::Publisher  m_markerPub, m_binaryMapPub, m_fullMapPub, m_pointCloudPub, m_collisionObjectPub, m_mapPub, m_cmapPub, m_fmapPub, m_fmarkerPub;
+  ros::Publisher m_markerPub, m_binaryMapPub, m_fullMapPub, m_pointCloudPub, m_collisionObjectPub, m_mapPub, m_cmapPub, m_fmapPub, m_fmarkerPub, m_processTimePub;
   message_filters::Subscriber<sensor_msgs::PointCloud2>* m_pointCloudSub;
   tf::MessageFilter<sensor_msgs::PointCloud2>* m_tfPointCloudSub;
   ros::ServiceServer m_octomapBinaryService, m_octomapFullService, m_clearBBXService, m_resetService;
@@ -235,6 +239,8 @@ protected:
   unsigned m_treeDepth;
   unsigned m_maxTreeDepth;
 
+  octomap::point3d sensorOrigin_;
+
   double m_pointcloudMinX;
   double m_pointcloudMaxX;
   double m_pointcloudMinY;
@@ -246,6 +252,10 @@ protected:
   double m_minSizeX;
   double m_minSizeY;
   bool m_filterSpeckles;
+  bool m_subtract_pointcloud;
+  bool m_localMapMode;
+  float m_localMapSize;
+  float m_localMapMinX, m_localMapMaxX, m_localMapMinY, m_localMapMaxY;
 
   bool m_filterGroundPlane;
   double m_groundFilterDistance;
