@@ -72,6 +72,7 @@ OctomapServer::OctomapServer(const ros::NodeHandle private_nh_, const ros::NodeH
   m_incrementalUpdate(false),
   m_initConfig(true)
 {
+  ROS_WARN("this is a new source-build octomap");
   double probHit, probMiss, thresMin, thresMax;
 
   m_nh_private.param("frame_id", m_worldFrameId, m_worldFrameId);
